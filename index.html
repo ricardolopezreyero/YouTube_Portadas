@@ -308,7 +308,7 @@ hr{border:none; border-top:.5px solid rgba(255,255,255,.06); margin:18px 0}
   <hr>
 
   <div class="grp">
-    <div class="eyebrow"><div class="ew-dot"></div><div class="ew-t">Tu foto · opción presidencial</div></div>
+    <div class="eyebrow"><div class="ew-dot"></div><div class="ew-t">Tu foto · usada en Presidencial e Híbrida</div></div>
     <div class="drop" id="drop">Usando tu foto oficial (GitHub).<br><b>Clic aquí para usar otra foto</b></div>
     <input type="file" id="file" accept="image/*" hidden>
     <div id="photoCtl" style="margin-top:10px">
@@ -352,6 +352,7 @@ hr{border:none; border-top:.5px solid rgba(255,255,255,.06); margin:18px 0}
     <div class="vcard on" data-v="academica"><canvas data-cv="academica"></canvas><div class="vlab"><i></i>1 · Académica</div></div>
     <div class="vcard" data-v="presidencial"><canvas data-cv="presidencial"></canvas><div class="vlab"><i></i>2 · Presidencial</div></div>
     <div class="vcard" data-v="llamativa"><canvas data-cv="llamativa"></canvas><div class="vlab"><i></i>3 · Llamativa</div></div>
+    <div class="vcard" data-v="hibrida"><canvas data-cv="hibrida"></canvas><div class="vlab"><i></i>4 · Híbrida</div></div>
   </div>
 </div>
 </main>
@@ -581,6 +582,26 @@ function drawPhoto(ctx){
   ctx.drawImage(img, x, y, w, h);
   ctx.restore();
 }
+/* foto pequeña superpuesta sobre el fondo — opción Híbrida. Tamaño fijo (no usa el
+   slider "Tamaño" de Presidencial) para que siempre quede notablemente más chica y
+   se siga viendo la foto de fondo; sombra en vez de luz violeta para no ensuciar
+   una imagen de fondo ya cargada — RLR */
+function drawPhotoSmall(ctx){
+  const img = activePhoto();
+  if (!img) return;
+  const h = 360;
+  const s = h / img.height;
+  const w = img.width * s;
+  const x = W - w - 46;
+  const y = H - h + 18;
+  ctx.save();
+  ctx.shadowColor = "rgba(0,4,20,.55)"; ctx.shadowBlur = 28; ctx.shadowOffsetY = 10;
+  if (S.pFlip){
+    ctx.translate(x + w/2, 0); ctx.scale(-1,1); ctx.translate(-(x + w/2), 0);
+  }
+  ctx.drawImage(img, x, y, w, h);
+  ctx.restore();
+}
 function drawCover(ctx, img){
   const s = Math.max(W / img.width, H / img.height) * 1.04;
   const w = img.width * s, h = img.height * s;
@@ -643,7 +664,7 @@ function render(ctx, variant){
     drawVignette(ctx);
   }
 
-  else { /* llamativa v3 — la foto es la protagonista, texto compacto arriba, sin etiqueta */
+  else if (variant === "llamativa" || variant === "hibrida"){ /* v3 — foto protagonista, texto compacto arriba, sin etiqueta. La híbrida suma tu foto pequeña encima — RLR */
     if (IMG.web){
       drawCover(ctx, IMG.web);
       /* oscurecido ajustable sobre toda la foto — RLR */
@@ -674,6 +695,7 @@ function render(ctx, variant){
       ctx.fillText(S.subtitle, mx, tb.bottom + (S.underline ? 74 : 46));
       ctx.restore();
     }
+    if (variant === "hibrida") drawPhotoSmall(ctx);
     drawLogo(ctx);
     drawVignette(ctx);
   }
@@ -696,7 +718,7 @@ function drawAll(){
     const c = thumbs[v].getContext("2d");
     c.save(); render(c, v); c.restore();
   }
-  const n = { academica:1, presidencial:2, llamativa:3 }[S.variant];
+  const n = { academica:1, presidencial:2, llamativa:3, hibrida:4 }[S.variant];
   $("dimLab").textContent = "1280 × 720 px · opción " + n;
 }
 document.querySelectorAll(".vcard").forEach(el => {
