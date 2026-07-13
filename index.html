@@ -173,6 +173,14 @@ input[type=range]::-webkit-slider-thumb{
 }
 .btn-ai:hover{transform:translateY(-1px); box-shadow:0 8px 24px rgba(86,239,159,.15)}
 .btn-ai:disabled{opacity:.5; cursor:wait; transform:none}
+.btn-more{
+  width:100%; margin-top:9px; padding:9px 0; border-radius:10px; cursor:pointer;
+  background:var(--panel); border:.5px solid var(--panel-b); color:var(--txt-sub);
+  font-family:inherit; font-weight:700; font-size:11.5px;
+  transition:border-color .2s, color .2s;
+}
+.btn-more:hover{border-color:rgba(86,239,159,.4); color:#fff}
+.btn-more:disabled{opacity:.5; cursor:wait}
 .results{display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin-top:10px}
 .results .r{
   position:relative; border-radius:7px; overflow:hidden; cursor:pointer;
@@ -291,6 +299,7 @@ hr{border:none; border-top:.5px solid rgba(255,255,255,.06); margin:18px 0}
     <div class="aipick" id="aiPick" style="display:none"></div>
     <div class="searching" id="searching">Buscando imágenes…</div>
     <div class="results" id="results"></div>
+    <button class="btn-more" id="btnMore" style="display:none">+ Cargar más fotos</button>
     <div class="lic" id="lic"></div>
     <div class="sl" style="margin-top:10px"><label>Oscurecer</label><input type="range" id="webDark" min="0" max="80" value="38"><output id="oDark">38</output></div>
     <div class="hint">Sube <b>Oscurecer</b> si el texto no se lee sobre la foto; bájalo para que la foto luzca más.</div>
@@ -710,6 +719,8 @@ function selectVariant(v){
    ============================================================ */
 const STOP = new Set("la el los las de del en y que un una tu su lo al es no más mas por para con ya se nadie casi solo cada".split(" "));
 let qDirty = false;
+/* estado de la sesión de sugerencias IA — para el botón "cargar más fotos" — RLR */
+let aiState = { ideas: [], topPick: 0, seen: new Set(), offsets: {}, items: [] };
 function suggestQuery(){
   if (qDirty) return;
   const words = S.title.replace(/\*/g,"").replace(/[.:¿?¡!,]/g,"").split(/\s+/)
@@ -717,10 +728,11 @@ function suggestQuery(){
   S.q = words.join(" ");
   $("q").value = S.q;
 }
-async function searchCommons(q, limit){
+async function searchCommons(q, limit, offset){
   const url = "https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*"
     + "&generator=search&gsrsearch=" + encodeURIComponent("filetype:bitmap " + q)
-    + "&gsrnamespace=6&gsrlimit=" + limit + "&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=1600";
+    + "&gsrnamespace=6&gsrlimit=" + limit + (offset ? "&gsroffset=" + offset : "")
+    + "&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=1600";
   const res = await fetch(url);
   const data = await res.json();
   return Object.values((data.query || {}).pages || {})
@@ -765,7 +777,7 @@ function renderResults(items, autoPick){
   const els = [];
   items.forEach((item) => {
     const div = document.createElement("div");
-    div.className = "r" + (item.isTop ? " top" : "");
+    div.className = "r" + (item.isTop ? " top" : "") + (item.url === S.webUrl ? " sel" : "");
     div.title = item.name + (item.lic ? " · " + item.lic : "") +
       (item.angle ? "\nÁngulo IA: " + item.angle : "") +
       (item.reason ? "\n" + item.reason : "") +
@@ -803,6 +815,7 @@ async function searchImages(autoPick){
   if (!q) return;
   S.q = q; save();
   $("searching").style.display = "block";
+  $("btnMore").style.display = "none"; /* búsqueda manual: no usa la paginación de la sesión IA */
   try {
     const items = await searchCommons(q, 12);
     $("searching").style.display = "none";
@@ -815,11 +828,13 @@ async function searchImages(autoPick){
 }
 /* Sugerencia con IA: el Worker piensa 6 conceptos visuales con ángulo psicológico
    y un CTR estimado (supuesto razonado) por concepto, más su recomendación top — RLR */
+const PER_IDEA = 8; /* candidatos crudos por concepto — la mayoría se filtra por orientación */
 async function aiSuggest(autoPick){
   const btn = $("btnAI");
   btn.disabled = true; btn.textContent = "✨ Razonando ángulos y CTR…";
   $("searching").style.display = "block";
   $("aiPick").style.display = "none";
+  $("btnMore").style.display = "none";
   try {
     const r = await fetch(WORKER + "/queries?title=" + encodeURIComponent(S.title.replace(/\*/g,"")), { cache:"no-store" });
     const { ideas = [], topPick = 0, topPickReason = "" } = await r.json();
@@ -837,23 +852,29 @@ async function aiSuggest(autoPick){
     });
     if (ideas[topPick]) showAiPick(ideas[topPick], topPickReason);
 
-    /* trae 3 fotos por concepto y adjunta el razonamiento a cada una */
+    /* nueva sesión de paginación — RLR */
+    aiState = { ideas, topPick, seen: new Set(), offsets: {}, items: [] };
+    ideas.forEach((idea, i) => { aiState.offsets[i] = PER_IDEA; });
+
+    /* trae varias fotos por concepto y adjunta el razonamiento a cada una */
     const lists = await Promise.all(ideas.map((idea, i) =>
-      searchCommons(idea.q, 3)
+      searchCommons(idea.q, PER_IDEA, 0)
         .then(list => list.map(it => ({ ...it, angle: idea.angle, reason: idea.reason, ctr: idea.ctr, isTop: i === topPick })))
         .catch(() => [])
     ));
-    const seen = new Set();
     const items = [];
     for (const list of lists)
       for (const it of list)
-        if (!seen.has(it.url)){ seen.add(it.url); items.push(it); }
+        if (!aiState.seen.has(it.url)){ aiState.seen.add(it.url); items.push(it); }
     /* las fotos del concepto ganador aparecen primero en la galería */
     items.sort((a,b) => (b.isTop - a.isTop) || (b.ctr - a.ctr));
+    aiState.items = items;
     $("searching").style.display = "none";
-    if (!items.length){ toast("La IA sugirió conceptos pero no hubo fotos — prueba manual"); return; }
-    renderResults(items.slice(0,12), autoPick);
-    toast(Math.min(items.length,12) + " fotos sugeridas · la de mayor CTR estimado lleva 🏆");
+    if (!items.length){ toast("La IA sugirió conceptos pero no hubo fotos — prueba manual"); $("btnMore").style.display = "none"; return; }
+    renderResults(items, autoPick);
+    $("btnMore").style.display = "block";
+    $("btnMore").textContent = "+ Cargar más fotos";
+    toast(items.length + " fotos sugeridas · la de mayor CTR estimado lleva 🏆");
   } catch(e){
     $("searching").style.display = "none";
     toast("IA no disponible — usando búsqueda normal");
@@ -862,6 +883,38 @@ async function aiSuggest(autoPick){
   btn.disabled = false; btn.textContent = "✨ Sugerir fotos y estimar CTR con IA";
 }
 $("btnAI").onclick = () => aiSuggest(false);
+/* botón "cargar más fotos": pagina Wikimedia Commons sobre los mismos 6 conceptos
+   (sin volver a llamar a la IA, gratis y rápido) y agrega lo nuevo a la galería — RLR */
+async function loadMorePhotos(){
+  if (!aiState.ideas.length){ toast("Primero pulsa \"Sugerir fotos\""); return; }
+  const btn = $("btnMore");
+  btn.disabled = true; btn.textContent = "Buscando más fotos…";
+  try {
+    const lists = await Promise.all(aiState.ideas.map((idea, i) =>
+      searchCommons(idea.q, PER_IDEA, aiState.offsets[i] || 0)
+        .then(list => {
+          aiState.offsets[i] = (aiState.offsets[i] || 0) + PER_IDEA;
+          return list.map(it => ({ ...it, angle: idea.angle, reason: idea.reason, ctr: idea.ctr, isTop: i === aiState.topPick }));
+        })
+        .catch(() => [])
+    ));
+    const fresh = [];
+    for (const list of lists)
+      for (const it of list)
+        if (!aiState.seen.has(it.url)){ aiState.seen.add(it.url); fresh.push(it); }
+    if (!fresh.length){
+      toast("No hay más fotos nuevas en estos conceptos — prueba \"Sugerir\" de nuevo para otros ángulos");
+    } else {
+      aiState.items = aiState.items.concat(fresh).sort((a,b) => (b.isTop - a.isTop) || (b.ctr - a.ctr));
+      renderResults(aiState.items, false);
+      toast("+" + fresh.length + " fotos nuevas agregadas");
+    }
+  } catch(e){
+    toast("Error de red al buscar más fotos");
+  }
+  btn.disabled = false; btn.textContent = "+ Cargar más fotos";
+}
+$("btnMore").onclick = loadMorePhotos;
 $("btnSearch").onclick = () => searchImages(false);
 $("q").addEventListener("keydown", e => { if (e.key === "Enter") searchImages(false); });
 $("q").addEventListener("input", () => { qDirty = true; });

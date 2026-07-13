@@ -30,8 +30,11 @@ export default {
       const title = (url.searchParams.get("title") || "").slice(0, 200).trim();
       if (!title) return json({ error: "falta title" }, 400, cors);
 
-      /* caché por título (24 h) SOLO en el borde de Cloudflare — v2: incluye razonamiento y ctr */
-      const cacheKey = new Request("https://cache.local/queries-v2?t=" + encodeURIComponent(title.toLowerCase()));
+      /* caché por título (24 h) SOLO en el borde de Cloudflare.
+         IMPORTANTE: sube este número de versión cada vez que cambie el prompt o el
+         esquema de respuesta — si no, títulos ya cacheados sirven resultados viejos
+         hasta por 24h aunque el código ya esté corregido (nos pasó con "-v2"). */
+      const cacheKey = new Request("https://cache.local/queries-v4?t=" + encodeURIComponent(title.toLowerCase()));
       const hit = await caches.default.match(cacheKey);
       if (hit) return json(await hit.json(), 200, cors);
 
@@ -44,7 +47,7 @@ export default {
           },
           body: JSON.stringify({
             model: "deepseek-chat",
-            temperature: 0.9,
+            temperature: 0.65,  /* más bajo = sigue mejor la regla de términos literales, menos deriva a metáforas */
             max_tokens: 900,
             messages: [
               {
@@ -58,8 +61,13 @@ export default {
                   'Título del video: "' + title + '".\n\n' +
                   "Genera 6 conceptos visuales distintos para el FONDO de una miniatura de YouTube (1280x720) pensados para maximizar el CTR de ESTE título específico. Para cada concepto piensa primero qué palanca psicológica usa (curiosidad por un vacío, contraste, autoridad/oficialidad, urgencia o deterioro, una cifra visual, un rostro con emoción, etc.) y luego tradúcelo en una búsqueda de foto real.\n\n" +
                   "Para cada uno de los 6 conceptos da:\n" +
-                  '- "q": consulta de búsqueda de 2 a 4 palabras para Wikimedia Commons (fotos reales documentales, NO ilustraciones ni iconos), sujetos concretos (aulas, estudiantes, escuelas, pizarrones, exámenes, edificios, banderas, papás con hijos), sin comillas internas. Alterna 3 en español y 3 en inglés para ampliar resultados.\n' +
-                  '- "angle": la palanca psicológica en 2 a 4 palabras (ej. "curiosidad por vacío", "autoridad oficial", "contraste emocional").\n' +
+                  '- "q": consulta de búsqueda de 2 a 4 palabras para Wikimedia Commons.\n' +
+                  "  REGLA CRÍTICA: Wikimedia Commons hace búsqueda LITERAL de texto (no entiende metáforas ni conceptos abstractos). Una consulta como \"broken classroom\" o \"deterioro educativo\" o \"poor children studying\" NO encuentra fotos de aulas — encuentra basura semántica (documentos antiguos, pinturas, música) porque Commons empareja las palabras sueltas donde sea que aparezcan, sin entender la intención.\n" +
+                  "  Por eso cada \"q\" debe ser 100% literal y fotografiable: combina como máximo UN adjetivo simple (vacío, lleno, antiguo, moderno, uniformado) con al menos un SUSTANTIVO ESCOLAR CONCRETO de esta lista o similar: aula, salón de clases, escuela, pizarrón, pupitres, uniforme escolar, examen, patio escolar, edificio escolar, bandera México, estudiantes, maestro, mochila, útiles escolares, graduación, director, oficina, biblioteca, classroom, students, school building, desks, chalkboard, backpack, exam paper, teacher, playground.\n" +
+                  '  Ejemplos BUENOS: "aula vacía pupitres", "salón clases lleno estudiantes", "niños uniforme escolar México", "empty classroom desks", "students exam classroom", "school building Mexico flag", "maestro pizarrón clase".\n' +
+                  '  Ejemplos MALOS (nunca hagas esto): "broken classroom Mexico", "deterioro educativo", "poor children studying", "urgencia escolar", "crisis educativa" — son abstractos y traen fotos irrelevantes.\n' +
+                  "  Sin comillas internas. Alterna 3 en español y 3 en inglés para ampliar resultados.\n" +
+                  '- "angle": la palanca psicológica en 2 a 4 palabras (ej. "curiosidad por vacío", "autoridad oficial", "contraste emocional") — aquí SÍ puedes ser abstracto, esto no se busca en Commons, solo describe la estrategia.\n' +
                   '- "reason": una frase de máximo 18 palabras explicando por qué ESE concepto capta clics para ESTE título en particular (no genérico).\n' +
                   '- "ctr": tu estimación numérica de 1 a 100 del potencial de CTR de ese concepto para esta audiencia — es un supuesto razonado tuyo, no un dato medido.\n\n' +
                   "Al final agrega:\n" +
