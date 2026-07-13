@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- ============================================================
-     SuperLeads · Generador de Portadas de YouTube (1280×720) · v2
+     SuperLeads · Generador de Portadas de YouTube (1280×720) · v3
      Autor: Ricardo López Reyero — RLR
      build: eye · rev 181218
      ============================================================ -->
@@ -124,6 +124,7 @@ select{appearance:none; cursor:pointer}
   border-radius:20px; cursor:pointer; transition:color .2s, border-color .2s;
 }
 .qchip:hover{color:var(--green); border-color:rgba(86,239,159,.4)}
+.qchip.ai{color:var(--green); border-color:rgba(86,239,159,.28)}
 /* toggles */
 .row{display:flex; align-items:center; justify-content:space-between; padding:7px 0}
 .row label{font-size:12.5px; font-weight:600; color:#dfe8ff}
@@ -154,6 +155,15 @@ input[type=range]::-webkit-slider-thumb{
   transition:transform .2s var(--ease);
 }
 .searchbar button:hover{transform:translateY(-1px)}
+.btn-ai{
+  width:100%; margin-top:8px; padding:10px 0; border-radius:10px; cursor:pointer;
+  background:linear-gradient(135deg, rgba(86,239,159,.16), rgba(42,137,251,.16));
+  border:.5px solid rgba(86,239,159,.35); color:var(--green);
+  font-family:inherit; font-weight:800; font-size:12px; letter-spacing:.3px;
+  transition:transform .2s var(--ease), box-shadow .2s;
+}
+.btn-ai:hover{transform:translateY(-1px); box-shadow:0 8px 24px rgba(86,239,159,.15)}
+.btn-ai:disabled{opacity:.5; cursor:wait; transform:none}
 .results{display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin-top:10px}
 .results .r{
   position:relative; border-radius:7px; overflow:hidden; cursor:pointer;
@@ -226,6 +236,7 @@ hr{border:none; border-top:.5px solid rgba(255,255,255,.06); margin:18px 0}
     <div class="eyebrow"><div class="ew-dot"></div><div class="ew-t">Etiqueta superior</div></div>
     <input type="text" id="badge" maxlength="48" spellcheck="false">
     <div class="row" style="margin-top:4px"><label>Mostrar etiqueta</label><label class="sw"><input type="checkbox" id="badgeOn" checked><i></i></label></div>
+    <div class="hint">La opción <b>Llamativa</b> nunca lleva etiqueta: la foto es la protagonista.</div>
   </div>
 
   <div class="grp"><!-- RLR -->
@@ -247,20 +258,18 @@ hr{border:none; border-top:.5px solid rgba(255,255,255,.06); margin:18px 0}
   <hr>
 
   <div class="grp">
-    <div class="eyebrow"><div class="ew-dot"></div><div class="ew-t">Imagen de internet · opción llamativa</div></div>
+    <div class="eyebrow"><div class="ew-dot"></div><div class="ew-t">Foto de fondo · opción llamativa</div></div>
     <div class="searchbar">
       <input type="text" id="q" spellcheck="false" placeholder="ej. escuela pública México">
       <button id="btnSearch">Buscar</button>
     </div>
-    <div class="qchips">
-      <button class="qchip">escuela pública México</button>
-      <button class="qchip">salón de clases niños</button>
-      <button class="qchip">classroom students Mexico</button>
-      <button class="qchip">school children learning</button>
-    </div>
-    <div class="searching" id="searching">Buscando en Wikimedia Commons…</div>
+    <button class="btn-ai" id="btnAI">✨ Sugerir fotos con IA según el título</button>
+    <div class="qchips" id="qchips"></div>
+    <div class="searching" id="searching">Buscando imágenes…</div>
     <div class="results" id="results"></div>
     <div class="lic" id="lic"></div>
+    <div class="sl" style="margin-top:10px"><label>Oscurecer</label><input type="range" id="webDark" min="0" max="80" value="38"><output id="oDark">38</output></div>
+    <div class="hint">Sube <b>Oscurecer</b> si el texto no se lee sobre la foto; bájalo para que la foto luzca más.</div>
   </div>
 
   <hr>
@@ -318,7 +327,7 @@ hr{border:none; border-top:.5px solid rgba(255,255,255,.06); margin:18px 0}
 
 <script>
 /* ============================================================
-   Motor de render v2 — Ricardo López Reyero (RLR)
+   Motor de render v3 — Ricardo López Reyero (RLR)
    ============================================================ */
 const _RLR = "Ricardo López Reyero";           /* firma de autoría */
 const _k = "EYE", _rev = 181218;               /* candado: ROT13(RLR) · posiciones alfabeto R·L·R */
@@ -330,6 +339,7 @@ const C = {
 const W = 1280, H = 720;
 const SS = 2;                                  /* supersampleo del preview (nitidez) */
 const ASSETS = "https://ricardolopezreyero.github.io/YouTube_Portadas/assets/";
+const WORKER = "https://portadas-imagenes.noisy-shape-4fc9.workers.dev";
 const $ = id => document.getElementById(id);
 
 /* ---------- estado ---------- */
@@ -341,7 +351,7 @@ const S = {
   subtitle:"",
   bg:"grad", circles:true, dots:false, vignette:true, underline:false, logoOn:false,
   pScale:1, pX:0, pY:0, pGlow:true, pFlip:false,
-  webUrl:"", webLic:"", q:""
+  webUrl:"", webLic:"", webDark:0.38, q:""
 };
 
 /* ---------- assets remotos (GitHub Pages) ---------- */
@@ -419,13 +429,13 @@ function wrapTokens(ctx, tokens, size, maxW){
   return { lines, spaceW };
 }
 function fitTitle(ctx, tokens, maxW, maxH, startSize){
-  for (let size = startSize; size >= 30; size -= 2){
+  for (let size = startSize; size >= 26; size -= 2){
     const { lines, spaceW } = wrapTokens(ctx, tokens, size, maxW);
     const lh = size * 1.09;
     if (lines.length * lh <= maxH) return { size, lines, lh, spaceW };
   }
-  const { lines, spaceW } = wrapTokens(ctx, tokens, 30, maxW);
-  return { size:30, lines, lh:33, spaceW };
+  const { lines, spaceW } = wrapTokens(ctx, tokens, 26, maxW);
+  return { size:26, lines, lh:29, spaceW };
 }
 function titleHeight(fit){ return fit.lines.length * fit.lh; }
 function drawTitleBlock(ctx, fit, x, y, shadow){
@@ -475,7 +485,7 @@ function drawLogo(ctx){
   if (IMG.logo && IMG.logo.naturalWidth){
     const lh = lw * IMG.logo.naturalHeight / IMG.logo.naturalWidth;
     ctx.drawImage(IMG.logo, 84, H - 50 - lh, lw, lh);
-  } else {  /* respaldo en texto */
+  } else {
     ctx.textBaseline = "alphabetic"; ctx.letterSpacing = "-0.8px";
     ctx.font = "800 30px 'Plus Jakarta Sans'";
     ctx.fillStyle = "#fff"; ctx.fillText("Super", 84, H - 56);
@@ -540,7 +550,7 @@ function drawCover(ctx, img){
   const s = Math.max(W / img.width, H / img.height) * 1.04;
   const w = img.width * s, h = img.height * s;
   ctx.save();
-  ctx.filter = "brightness(.92) saturate(.9)";
+  ctx.filter = "brightness(.95) saturate(.92)";
   ctx.drawImage(img, (W - w)/2, (H - h)/2, w, h);
   ctx.restore();
 }
@@ -598,43 +608,35 @@ function render(ctx, variant){
     drawVignette(ctx);
   }
 
-  else { /* llamativa */
+  else { /* llamativa v3 — la foto es la protagonista, texto compacto arriba, sin etiqueta */
     if (IMG.web){
       drawCover(ctx, IMG.web);
-      /* capas de legibilidad — RLR */
-      let g = ctx.createLinearGradient(0,0,W*0.78,0);
-      g.addColorStop(0, "rgba(0,14,50,.94)");
-      g.addColorStop(.55, "rgba(0,14,50,.55)");
-      g.addColorStop(1, "rgba(0,14,50,0)");
-      ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
-      g = ctx.createLinearGradient(0,H,0,H*0.30);
-      g.addColorStop(0, "rgba(0,8,32,.88)");
+      /* oscurecido ajustable sobre toda la foto — RLR */
+      ctx.fillStyle = "rgba(0,10,38," + S.webDark + ")";
+      ctx.fillRect(0,0,W,H);
+      /* velo superior suave solo para la zona del texto */
+      const g = ctx.createLinearGradient(0,0,0,H*0.52);
+      g.addColorStop(0, "rgba(0,8,32,.72)");
       g.addColorStop(1, "rgba(0,8,32,0)");
-      ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
-      g = ctx.createLinearGradient(0,0,0,150);
-      g.addColorStop(0, "rgba(0,8,32,.55)"); g.addColorStop(1, "rgba(0,8,32,0)");
-      ctx.fillStyle = g; ctx.fillRect(0,0,W,150);
+      ctx.fillStyle = g; ctx.fillRect(0,0,W,H*0.52);
     } else {
       drawBackground(ctx);
-      ctx.fillStyle = "rgba(255,255,255,.28)";
-      ctx.font = "600 24px 'Plus Jakarta Sans'";
+      ctx.fillStyle = "rgba(255,255,255,.30)";
+      ctx.font = "600 26px 'Plus Jakarta Sans'";
       ctx.textAlign = "center";
-      ctx.fillText("Busca y elige una imagen en el panel izquierdo →", W/2, 96);
+      ctx.fillText("Cargando fotos… o busca una en el panel izquierdo", W/2, H/2);
       ctx.textAlign = "left";
     }
-    const margin2 = 84;
-    if (S.badgeOn && S.badge) drawBadge(ctx, margin2, 60, S.badge);
-    const fit = fitTitle(ctx, tokens, 780, 330, 92);
-    const st = S.subtitle ? 66 : 0;
-    const yTop = H - 96 - st - titleHeight(fit) - 40;
-    const tb = drawTitleBlock(ctx, fit, margin2, yTop, true);
-    drawUnderline(ctx, margin2, tb.bottom, true);
+    const mx = 72;
+    const fit = fitTitle(ctx, tokens, 730, 216, 56);
+    const tb = drawTitleBlock(ctx, fit, mx, 56, true);
+    drawUnderline(ctx, mx, tb.bottom - 8);
     if (S.subtitle){
       ctx.save();
-      ctx.shadowColor = "rgba(0,6,26,.6)"; ctx.shadowBlur = 18;
-      ctx.font = "500 27px 'Plus Jakarta Sans'";
-      ctx.fillStyle = "#cdd9f4";
-      ctx.fillText(S.subtitle, margin2, tb.bottom + 92);
+      ctx.shadowColor = "rgba(0,6,26,.65)"; ctx.shadowBlur = 16;
+      ctx.font = "500 23px 'Plus Jakarta Sans'";
+      ctx.fillStyle = "#d9e3fa";
+      ctx.fillText(S.subtitle, mx, tb.bottom + (S.underline ? 74 : 46));
       ctx.restore();
     }
     drawLogo(ctx);
@@ -662,8 +664,6 @@ function drawAll(){
   const n = { academica:1, presidencial:2, llamativa:3 }[S.variant];
   $("dimLab").textContent = "1280 × 720 px · opción " + n;
 }
-
-/* selección de opción */
 document.querySelectorAll(".vcard").forEach(el => {
   el.onclick = () => {
     document.querySelectorAll(".vcard").forEach(x => x.classList.remove("on"));
@@ -672,10 +672,15 @@ document.querySelectorAll(".vcard").forEach(el => {
     save(); schedule();
   };
 });
+function selectVariant(v){
+  S.variant = v;
+  document.querySelectorAll(".vcard").forEach(x => x.classList.toggle("on", x.dataset.v === v));
+  schedule();
+}
 
 /* ============================================================
-   Búsqueda de imagen relevante (Wikimedia Commons, sin API key,
-   imágenes seguras para canvas por CORS) — RLR
+   Fotos de fondo: Wikimedia Commons (CORS-safe) + sugerencias
+   inteligentes vía Worker de Cloudflare con DeepSeek — RLR
    ============================================================ */
 const STOP = new Set("la el los las de del en y que un una tu su lo al es no más mas por para con ya se nadie casi solo cada".split(" "));
 let qDirty = false;
@@ -686,60 +691,107 @@ function suggestQuery(){
   S.q = words.join(" ");
   $("q").value = S.q;
 }
-async function searchImages(){
+async function searchCommons(q, limit){
+  const url = "https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*"
+    + "&generator=search&gsrsearch=" + encodeURIComponent("filetype:bitmap " + q)
+    + "&gsrnamespace=6&gsrlimit=" + limit + "&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=1600";
+  const res = await fetch(url);
+  const data = await res.json();
+  return Object.values((data.query || {}).pages || {})
+    .filter(p => p.imageinfo && /\.(jpe?g|png)$/i.test(p.imageinfo[0].url))
+    /* solo fotos horizontales: los escaneos y retratos verticales no sirven de fondo — RLR */
+    .filter(p => (p.imageinfo[0].thumbwidth || 0) > (p.imageinfo[0].thumbheight || 1) * 1.05)
+    .sort((a,b) => a.index - b.index)
+    .map(p => ({
+      url: p.imageinfo[0].thumburl,
+      lic: ((p.imageinfo[0].extmetadata || {}).LicenseShortName || {}).value || "",
+      name: (p.title || "").replace("File:",""),
+      q
+    }));
+}
+function pickImage(item, el){
+  document.querySelectorAll(".results .r").forEach(x => x.classList.remove("sel"));
+  if (el) el.classList.add("sel");
+  S.webUrl = item.url;
+  S.webLic = item.lic;
+  $("lic").textContent = item.lic ? "Imagen: Wikimedia Commons · Licencia " + item.lic : "Imagen: Wikimedia Commons";
+  loadRemote("web", item.url);
+  save();
+}
+function renderResults(items, autoPick){
+  $("results").innerHTML = "";
+  items.forEach((item, i) => {
+    const div = document.createElement("div");
+    div.className = "r";
+    div.title = item.name + (item.lic ? " · " + item.lic : "") + (item.q ? "\nBúsqueda: " + item.q : "");
+    const im = document.createElement("img");
+    im.loading = "lazy"; im.src = item.url;
+    div.appendChild(im);
+    div.onclick = () => { pickImage(item, div); selectVariant("llamativa"); };
+    $("results").appendChild(div);
+    if (autoPick && i === 0 && !S.webUrl) pickImage(item, div);
+  });
+}
+async function searchImages(autoPick){
   const q = $("q").value.trim();
   if (!q) return;
   S.q = q; save();
   $("searching").style.display = "block";
-  $("results").innerHTML = "";
   try {
-    const url = "https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*"
-      + "&generator=search&gsrsearch=" + encodeURIComponent("filetype:bitmap " + q)
-      + "&gsrnamespace=6&gsrlimit=12&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=1600";
-    const res = await fetch(url);
-    const data = await res.json();
-    const pages = Object.values((data.query || {}).pages || {})
-      .filter(p => p.imageinfo && /\.(jpe?g|png)$/i.test(p.imageinfo[0].url))
-      .sort((a,b) => a.index - b.index);
+    const items = await searchCommons(q, 12);
     $("searching").style.display = "none";
-    if (!pages.length){ toast("Sin resultados — intenta en inglés"); return; }
-    pages.forEach(p => {
-      const info = p.imageinfo[0];
-      const md = info.extmetadata || {};
-      const lic = (md.LicenseShortName || {}).value || "";
-      const div = document.createElement("div");
-      div.className = "r";
-      div.title = (p.title || "").replace("File:","") + (lic ? " · " + lic : "");
-      const im = document.createElement("img");
-      im.loading = "lazy"; im.src = info.thumburl;
-      div.appendChild(im);
-      div.onclick = () => {
-        document.querySelectorAll(".results .r").forEach(x => x.classList.remove("sel"));
-        div.classList.add("sel");
-        S.webUrl = info.thumburl;
-        S.webLic = lic;
-        $("lic").textContent = lic ? "Imagen: Wikimedia Commons · Licencia " + lic : "Imagen: Wikimedia Commons";
-        loadRemote("web", info.thumburl);
-        selectVariant("llamativa");
-        save();
-      };
-      $("results").appendChild(div);
-    });
+    if (!items.length){ toast("Sin resultados — intenta en inglés"); return; }
+    renderResults(items, autoPick);
   } catch(e){
     $("searching").style.display = "none";
     toast("Error de red al buscar");
   }
 }
-function selectVariant(v){
-  S.variant = v;
-  document.querySelectorAll(".vcard").forEach(x => x.classList.toggle("on", x.dataset.v === v));
-  schedule();
+/* Sugerencia con IA: el Worker devuelve 6 búsquedas visuales según el título */
+async function aiSuggest(autoPick){
+  const btn = $("btnAI");
+  btn.disabled = true; btn.textContent = "✨ Pensando búsquedas visuales…";
+  $("searching").style.display = "block";
+  try {
+    const r = await fetch(WORKER + "/queries?title=" + encodeURIComponent(S.title.replace(/\*/g,"")));
+    const { queries = [] } = await r.json();
+    if (!queries.length) throw new Error("sin consultas");
+    /* muestra las consultas como chips reutilizables */
+    $("qchips").innerHTML = "";
+    queries.forEach(q => {
+      const b = document.createElement("button");
+      b.className = "qchip ai"; b.textContent = q;
+      b.onclick = () => { $("q").value = q; qDirty = true; searchImages(false); };
+      $("qchips").appendChild(b);
+    });
+    /* trae 3 fotos por consulta y arma una galería variada */
+    const lists = await Promise.all(queries.map(q => searchCommons(q, 3).catch(() => [])));
+    const seen = new Set();
+    const items = [];
+    for (const list of lists)
+      for (const it of list)
+        if (!seen.has(it.url)){ seen.add(it.url); items.push(it); }
+    $("searching").style.display = "none";
+    if (!items.length){ toast("La IA sugirió búsquedas pero no hubo fotos — prueba manual"); return; }
+    renderResults(items.slice(0,12), autoPick);
+    toast(Math.min(items.length,12) + " fotos sugeridas por IA — elige tu favorita");
+  } catch(e){
+    $("searching").style.display = "none";
+    toast("IA no disponible — usando búsqueda normal");
+    searchImages(autoPick);
+  }
+  btn.disabled = false; btn.textContent = "✨ Sugerir fotos con IA según el título";
 }
-$("btnSearch").onclick = searchImages;
-$("q").addEventListener("keydown", e => { if (e.key === "Enter") searchImages(); });
+$("btnAI").onclick = () => aiSuggest(false);
+$("btnSearch").onclick = () => searchImages(false);
+$("q").addEventListener("keydown", e => { if (e.key === "Enter") searchImages(false); });
 $("q").addEventListener("input", () => { qDirty = true; });
-document.querySelectorAll(".qchip").forEach(b => {
-  b.onclick = () => { $("q").value = b.textContent; qDirty = true; searchImages(); };
+const BASE_QCHIPS = ["escuela pública México","salón de clases niños","classroom students Mexico","school children learning"];
+BASE_QCHIPS.forEach(q => {
+  const b = document.createElement("button");
+  b.className = "qchip"; b.textContent = q;
+  b.onclick = () => { $("q").value = q; qDirty = true; searchImages(false); };
+  $("qchips").appendChild(b);
 });
 
 /* ============================================================
@@ -790,7 +842,6 @@ function slug(){
     .normalize("NFD").replace(/[̀-ͯ]/g,"")
     .replace(/[^a-zA-Z0-9]+/g,"_").replace(/^_+|_+$/g,"").slice(0,52) || "portada";
 }
-/* renderiza al doble y reescala: bordes de letra perfectamente suaves */
 function renderAt(scale){
   const hi = document.createElement("canvas");
   hi.width = W*scale*2; hi.height = H*scale*2;
@@ -887,6 +938,11 @@ $("bg").addEventListener("input", () => { S.bg = $("bg").value; save(); schedule
     schedule();
   });
 });
+$("webDark").addEventListener("input", () => {
+  S.webDark = $("webDark").value / 100;
+  $("oDark").textContent = $("webDark").value;
+  save(); schedule();
+});
 
 /* ---------- persistencia ---------- */
 const LS = "sl_portadas_v2"; /* RLR */
@@ -905,6 +961,7 @@ function restore(){
   $("pScale").value = S.pScale*100; $("oScale").textContent = Math.round(S.pScale*100);
   $("pX").value = S.pX; $("oX").textContent = S.pX;
   $("pY").value = S.pY; $("oY").textContent = S.pY;
+  $("webDark").value = Math.round(S.webDark*100); $("oDark").textContent = Math.round(S.webDark*100);
   document.querySelectorAll(".vcard").forEach(x => x.classList.toggle("on", x.dataset.v === S.variant));
   if (S.q){ $("q").value = S.q; qDirty = true; } else suggestQuery();
   if (S.webUrl){
@@ -916,6 +973,8 @@ function restore(){
 /* ---------- arranque ---------- */
 restore();
 schedule();
+/* si aún no hay foto de fondo elegida, la IA trae opciones sola y usa la primera */
+if (!S.webUrl) aiSuggest(true);
 Promise.all([
   document.fonts.load("800 90px 'Plus Jakarta Sans'"),
   document.fonts.load("italic 800 90px 'Plus Jakarta Sans'"),
