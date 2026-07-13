@@ -117,6 +117,10 @@ select{appearance:none; cursor:pointer}
   padding:8px 11px; border-radius:8px; cursor:pointer; transition:border-color .2s, color .2s;
 }
 .chip:hover{border-color:rgba(86,239,159,.4); color:#fff}
+.chip em{color:var(--green); font-style:italic; font-weight:800}
+.chip-em{border-left:2.5px solid var(--green)}
+.chip-alt{border-left:2.5px solid rgba(122,159,212,.4)}
+.chips-loading{font-size:10.5px; color:var(--txt-lab); padding:2px 2px 4px}
 .qchips{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
 .qchip{
   background:var(--panel); border:.5px solid var(--panel-b); color:var(--txt-lab);
@@ -282,6 +286,7 @@ hr{border:none; border-top:.5px solid rgba(255,255,255,.06); margin:18px 0}
 
   <div class="grp">
     <div class="eyebrow"><div class="ew-dot"></div><div class="ew-t">Ideas de título</div></div>
+    <div class="hint" style="margin-top:-4px; margin-bottom:8px">Las dos primeras son <b>tu mismo título</b> con distinta frase resaltada en verde; las siguientes son <b>alternativas con IA</b> sobre el mismo tema.</div>
     <div class="chips" id="chips"></div>
   </div>
 
@@ -413,28 +418,47 @@ loadRemote("logo",  ASSETS + "sl_blanco.svg");
 $("brandLogo").src = ASSETS + "sl_blanco.svg";
 const activePhoto = () => IMG.custom || IMG.photo;
 
-/* ---------- ideas precargadas ---------- */
-const IDEAS = [
+/* ---------- ideas de título: 2 con énfasis sobre tu propio texto + alternativas
+   de IA que hacen match con el tema — se recalculan cuando cambias el título — RLR */
+const FALLBACK_IDEAS = [
   "La realidad de la educación pública en *México*",
   "Lo que los datos revelan y *nadie quiere medir*",
   "El organigrama de admisiones que decide *cuánto crece* tu colegio",
-  "El mercado que todos ven y la oportunidad que *casi nadie opera*",
-  "Tu colegio *ya fue calificado* esta semana y nadie se enteró",
   "El mapa del proceso de inscripciones que *casi ningún colegio* tiene",
-  "Los *5 estados* de un colegio privado: ¿en cuál está el tuyo?",
-  "Los papás quieren gastar más y *no los dejas*",
-  "El ADN de tu colegio: dos escuelas iguales, *destinos opuestos*",
-  "El sistema de admisiones de los *mejores colegios* de México",
   "El *34%* puede pagar colegio privado. Solo el *10%* lo hace.",
   "Tu colegio no necesita más publicidad. Necesita un *mejor sistema*."
 ];
-IDEAS.forEach(t => {
+function chipLabelHTML(t){
+  return esc(t).replace(/\*([^*]+)\*/g, "<em>$1</em>");
+}
+function addTitleChip(t, cls){
   const b = document.createElement("button");
-  b.className = "chip";
-  b.textContent = t.replace(/\*/g,"");
-  b.onclick = () => { S.title = t; $("title").value = t; suggestQuery(); save(); schedule(); };
+  b.className = "chip " + cls;
+  b.innerHTML = chipLabelHTML(t);
+  b.onclick = () => { S.title = t; $("title").value = t; suggestQuery(); save(); schedule(); scheduleTitleIdeas(); };
   $("chips").appendChild(b);
-});
+}
+function renderTitleIdeas(highlights, alternatives){
+  $("chips").innerHTML = "";
+  (highlights || []).forEach(t => addTitleChip(t, "chip-em"));
+  (alternatives || []).forEach(t => addTitleChip(t, "chip-alt"));
+}
+/* placeholder inmediato mientras responde la IA — nunca deja el panel vacío */
+renderTitleIdeas(FALLBACK_IDEAS.slice(0,2), FALLBACK_IDEAS.slice(2));
+let titleIdeasTimer = null;
+async function updateTitleIdeas(){
+  const title = S.title.replace(/\*/g,"").trim();
+  if (!title) return;
+  try {
+    const r = await fetch(WORKER + "/titles?title=" + encodeURIComponent(title), { cache:"no-store" });
+    const { highlights = [], alternatives = [] } = await r.json();
+    if (title === S.title.replace(/\*/g,"").trim()) renderTitleIdeas(highlights, alternatives); /* el usuario no siguió escribiendo mientras esperábamos */
+  } catch(e){ /* si falla, se quedan los chips que ya había */ }
+}
+function scheduleTitleIdeas(){
+  clearTimeout(titleIdeasTimer);
+  titleIdeasTimer = setTimeout(updateTitleIdeas, 900);
+}
 
 /* ---------- parsing del título ---------- */
 /* RLR */
@@ -1300,7 +1324,7 @@ function bind(id, key, isCheck){
   const el = $(id);
   el.addEventListener("input", () => {
     S[key] = isCheck ? el.checked : el.value;
-    if (key === "title") suggestQuery();
+    if (key === "title"){ suggestQuery(); scheduleTitleIdeas(); }
     save(); schedule();
   });
 }
@@ -1357,6 +1381,7 @@ function restore(){
 /* ---------- arranque ---------- */
 restore();
 schedule();
+updateTitleIdeas();
 /* si aún no hay foto de fondo elegida, la IA trae opciones sola y usa la primera */
 if (!S.webUrl) aiSuggest(true);
 Promise.all([
