@@ -71,7 +71,7 @@ aside::-webkit-scrollbar-thumb{background:#0a3070; border-radius:4px}
 canvas#cvMain{
   width:100%; height:100%; display:block; border-radius:14px;
   box-shadow:0 30px 90px rgba(0,0,0,.55), 0 0 0 .5px rgba(255,255,255,.09);
-  background:var(--navy-deep);
+  background:var(--navy-deep); touch-action:none;
 }
 .dim{
   position:absolute; right:2px; top:-24px; font-size:10.5px; font-weight:700;
@@ -321,6 +321,8 @@ hr{border:none; border-top:.5px solid rgba(255,255,255,.06); margin:18px 0}
         <button class="mini-btn" id="pReset">↺ Foto oficial</button>
       </div>
     </div>
+    <div class="hint">Estos controles ajustan tu foto en <b>Presidencial</b>. En <b>Híbrida</b> arrástrala y agrándala/achícala directo sobre el lienzo grande (mouse o dedo) — toma la esquina verde para redimensionar.</div>
+    <button class="mini-btn" id="hReset" style="margin-top:8px; width:100%">↺ Restablecer tamaño y posición · Híbrida</button>
   </div>
 
   <hr>
@@ -387,7 +389,8 @@ const S = {
   bg:"grad", circles:true, dots:false, vignette:true, underline:false, logoOn:false,
   pScale:1, pX:0, pY:0, pGlow:true, pFlip:false,
   webUrl:"", webLic:"", webDark:0.38, q:"",
-  webAngle:"", webReason:"", webCtr:null   /* razonamiento y CTR estimado de la foto elegida — RLR */
+  webAngle:"", webReason:"", webCtr:null,   /* razonamiento y CTR estimado de la foto elegida — RLR */
+  hScale:2, hX:0, hY:0   /* foto de la opción Híbrida — 2x de base por defecto, movible/redimensionable con el mouse o el dedo */
 };
 
 /* ---------- assets remotos (GitHub Pages) ---------- */
@@ -559,14 +562,55 @@ function drawBackground(ctx){
       }
   }
 }
-function drawPhoto(ctx){
+/* límites de la foto por variante — una sola fuente de verdad, reutilizada para
+   dibujar Y para el hit-test del arrastre/redimensionado con mouse o dedo — RLR */
+function photoBounds(variant){
   const img = activePhoto();
-  if (!img) return;
-  const baseH = 790 * S.pScale;
-  const s = baseH / img.height;
-  const w = img.width * s, h = img.height * s;
-  const x = W - w * 0.96 + S.pX;
-  const y = H - h + 26 + S.pY;
+  if (!img) return null;
+  if (variant === "presidencial"){
+    const baseH = 790 * S.pScale;
+    const s = baseH / img.height;
+    const w = img.width * s, h = img.height * s;
+    return { x: W - w * 0.96 + S.pX, y: H - h + 26 + S.pY, w, h };
+  }
+  if (variant === "hibrida"){
+    const baseH = 360 * S.hScale;
+    const s = baseH / img.height;
+    const w = img.width * s, h = baseH;
+    return { x: W - w - 46 + S.hX, y: H - h + 18 + S.hY, w, h };
+  }
+  return null;
+}
+/* asa de arrastre (contorno punteado) + botón de redimensionar — solo se dibuja en
+   el lienzo grande interactivo, nunca en miniaturas ni en el PNG exportado — RLR */
+function drawPhotoHandles(ctx, b){
+  ctx.save();
+  ctx.setLineDash([6,5]);
+  ctx.strokeStyle = "rgba(86,239,159,.7)";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(b.x + 1, b.y + 1, b.w - 2, b.h - 2);
+  ctx.setLineDash([]);
+  const { hx, hy } = handlePos(b);
+  ctx.beginPath(); ctx.arc(hx, hy, 13, 0, 7);
+  ctx.fillStyle = "#56EF9F"; ctx.fill();
+  ctx.lineWidth = 2.5; ctx.strokeStyle = "#001240"; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(hx-4,hy+4); ctx.lineTo(hx+4,hy-4);
+  ctx.moveTo(hx-5,hy-1); ctx.lineTo(hx-1,hy-5);
+  ctx.moveTo(hx+1,hy+5); ctx.lineTo(hx+5,hy+1);
+  ctx.strokeStyle = "#001240"; ctx.lineWidth = 1.6; ctx.stroke();
+  ctx.restore();
+}
+/* el asa se ancla cerca de la esquina inferior-derecha de la foto, pero nunca sale
+   del cuadro visible — necesario porque varias fotos se recortan a propósito por
+   abajo/derecha (mismo anclaje que ya usaban) — RLR */
+function handlePos(b){
+  return { hx: Math.min(b.x + b.w, W - 18), hy: Math.min(b.y + b.h, H - 18) };
+}
+function drawPhoto(ctx, interactive){
+  const b = photoBounds("presidencial");
+  if (!b) return;
+  const img = activePhoto();
+  const { x, y, w, h } = b;
   if (S.pGlow){
     const gx = x + w*0.5, gy = y + h*0.32;
     const g = ctx.createRadialGradient(gx, gy, 40, gx, gy, w*0.72);
@@ -581,19 +625,17 @@ function drawPhoto(ctx){
   }
   ctx.drawImage(img, x, y, w, h);
   ctx.restore();
+  if (interactive) drawPhotoHandles(ctx, b);
 }
-/* foto pequeña superpuesta sobre el fondo — opción Híbrida. Tamaño fijo (no usa el
-   slider "Tamaño" de Presidencial) para que siempre quede notablemente más chica y
-   se siga viendo la foto de fondo; sombra en vez de luz violeta para no ensuciar
-   una imagen de fondo ya cargada — RLR */
-function drawPhotoSmall(ctx){
+/* foto pequeña superpuesta sobre el fondo — opción Híbrida. Tamaño y posición se
+   controlan arrastrando/redimensionando directamente sobre el lienzo (mouse o
+   dedo); sombra en vez de luz violeta para no ensuciar una imagen de fondo ya
+   cargada — RLR */
+function drawPhotoSmall(ctx, interactive){
+  const b = photoBounds("hibrida");
+  if (!b) return;
   const img = activePhoto();
-  if (!img) return;
-  const h = 360;
-  const s = h / img.height;
-  const w = img.width * s;
-  const x = W - w - 46;
-  const y = H - h + 18;
+  const { x, y, w, h } = b;
   ctx.save();
   ctx.shadowColor = "rgba(0,4,20,.55)"; ctx.shadowBlur = 28; ctx.shadowOffsetY = 10;
   if (S.pFlip){
@@ -601,6 +643,7 @@ function drawPhotoSmall(ctx){
   }
   ctx.drawImage(img, x, y, w, h);
   ctx.restore();
+  if (interactive) drawPhotoHandles(ctx, b);
 }
 function drawCover(ctx, img){
   const s = Math.max(W / img.width, H / img.height) * 1.04;
@@ -623,8 +666,8 @@ function drawUnderline(ctx, x, y, force){
   ctx.fillStyle = C.green; ctx.fill();
 }
 
-/* ---------- las 3 opciones ---------- */
-function render(ctx, variant){
+/* ---------- las 4 opciones ---------- */
+function render(ctx, variant, interactive){
   ctx.clearRect(0,0,W,H);
   const tokens = parseTitle(S.title || " ");
   const margin = 84;
@@ -648,7 +691,7 @@ function render(ctx, variant){
 
   else if (variant === "presidencial"){
     drawBackground(ctx);
-    drawPhoto(ctx);
+    drawPhoto(ctx, interactive);
     let y = 66;
     if (S.badgeOn && S.badge){ drawBadge(ctx, margin, y, S.badge); y += 46; }
     y += 38;
@@ -695,7 +738,7 @@ function render(ctx, variant){
       ctx.fillText(S.subtitle, mx, tb.bottom + (S.underline ? 74 : 46));
       ctx.restore();
     }
-    if (variant === "hibrida") drawPhotoSmall(ctx);
+    if (variant === "hibrida") drawPhotoSmall(ctx, interactive);
     drawLogo(ctx);
     drawVignette(ctx);
   }
@@ -713,7 +756,7 @@ let rafId = null;
 function schedule(){ if (!rafId) rafId = requestAnimationFrame(() => { rafId = null; drawAll(); }); }
 function drawAll(){
   const m = cvMain.getContext("2d");
-  m.save(); m.scale(SS,SS); render(m, S.variant); m.restore();
+  m.save(); m.scale(SS,SS); render(m, S.variant, true); m.restore();
   for (const v in thumbs){
     const c = thumbs[v].getContext("2d");
     c.save(); render(c, v); c.restore();
@@ -734,6 +777,96 @@ function selectVariant(v){
   document.querySelectorAll(".vcard").forEach(x => x.classList.toggle("on", x.dataset.v === v));
   schedule();
 }
+
+/* ============================================================
+   Arrastrar y redimensionar la foto (Presidencial e Híbrida) con
+   mouse o dedo, directo sobre el lienzo grande — RLR
+   ============================================================ */
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+function draggableVariant(){
+  return (S.variant === "hibrida" || S.variant === "presidencial") ? S.variant : null;
+}
+function toLogical(e){
+  const rect = cvMain.getBoundingClientRect();
+  return {
+    x: (e.clientX - rect.left) * (W / rect.width),
+    y: (e.clientY - rect.top) * (H / rect.height),
+  };
+}
+function hitRegion(p, b){
+  if (!b) return null;
+  const { hx, hy } = handlePos(b);
+  const handleR = 22; /* radio de acierto un poco mayor al dibujado, para que sea fácil de agarrar con el dedo */
+  if (Math.hypot(p.x - hx, p.y - hy) <= handleR) return "resize";
+  if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) return "move";
+  return null;
+}
+function syncPhotoControlsUI(){
+  $("pScale").value = Math.round(S.pScale*100); $("oScale").textContent = Math.round(S.pScale*100);
+  $("pX").value = Math.round(S.pX); $("oX").textContent = Math.round(S.pX);
+  $("pY").value = Math.round(S.pY); $("oY").textContent = Math.round(S.pY);
+}
+let drag = null;
+/* hover: solo cambia el cursor cuando el puntero está sobre el lienzo — RLR */
+function onCanvasHover(e){
+  if (drag) return; /* el movimiento activo lo maneja el listener en window */
+  const variant = draggableVariant();
+  const b = variant && photoBounds(variant);
+  const region = b ? hitRegion(toLogical(e), b) : null;
+  cvMain.style.cursor = region === "resize" ? "nwse-resize" : region === "move" ? "grab" : "default";
+}
+function onPointerDown(e){
+  const variant = draggableVariant();
+  const b = variant && photoBounds(variant);
+  if (!b) return;
+  const p = toLogical(e);
+  const region = hitRegion(p, b);
+  if (!region) return;
+  try { cvMain.setPointerCapture(e.pointerId); } catch(_){} /* puede fallar en algunos navegadores/touch — no debe cortar el arrastre */
+  drag = {
+    variant, region, startPX: p.x, startPY: p.y, startBounds: b,
+    startScale: variant === "presidencial" ? S.pScale : S.hScale,
+    startOffX: variant === "presidencial" ? S.pX : S.hX,
+    startOffY: variant === "presidencial" ? S.pY : S.hY,
+  };
+  cvMain.style.cursor = region === "resize" ? "nwse-resize" : "grabbing";
+  e.preventDefault();
+}
+/* el movimiento y la suelta van en window: así el arrastre sigue funcionando aunque
+   el mouse/dedo se salga del lienzo a media maniobra — RLR */
+function onWindowPointerMove(e){
+  if (!drag) return;
+  const p = toLogical(e);
+  const dx = p.x - drag.startPX, dy = p.y - drag.startPY;
+  if (drag.region === "move"){
+    if (drag.variant === "presidencial"){
+      S.pX = clamp(drag.startOffX + dx, -500, 500);
+      S.pY = clamp(drag.startOffY + dy, -260, 420);
+    } else {
+      S.hX = clamp(drag.startOffX + dx, -520, 520);
+      S.hY = clamp(drag.startOffY + dy, -420, 420);
+    }
+  } else { /* resize — la diagonal arrastrada agranda/achica proporcionalmente */
+    const factor = Math.max(0.15, (drag.startBounds.h + dy) / drag.startBounds.h);
+    if (drag.variant === "presidencial") S.pScale = clamp(drag.startScale * factor, 0.55, 3.2);
+    else S.hScale = clamp(drag.startScale * factor, 0.4, 3.6);
+  }
+  if (drag.variant === "presidencial") syncPhotoControlsUI();
+  schedule();
+}
+function onWindowPointerUp(e){
+  if (!drag) return;
+  try { cvMain.releasePointerCapture(e.pointerId); } catch(_){}
+  drag = null;
+  cvMain.style.cursor = "default";
+  save();
+}
+cvMain.addEventListener("pointerdown", onPointerDown);
+cvMain.addEventListener("pointermove", onCanvasHover);
+window.addEventListener("pointermove", onWindowPointerMove);
+window.addEventListener("pointerup", onWindowPointerUp);
+window.addEventListener("pointercancel", onWindowPointerUp);
+$("hReset").onclick = () => { S.hScale = 2; S.hX = 0; S.hY = 0; save(); schedule(); };
 
 /* ============================================================
    Fotos de fondo: Wikimedia Commons (CORS-safe) + sugerencias
