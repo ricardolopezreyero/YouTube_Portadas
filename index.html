@@ -289,6 +289,9 @@ hr{border:none; border-top:.5px solid rgba(255,255,255,.06); margin:18px 0}
 
   <div class="grp">
     <div class="eyebrow"><div class="ew-dot"></div><div class="ew-t">Foto de fondo · opción llamativa</div></div>
+    <div class="drop" id="dropBg">Sube tu propia foto de fondo<br><b>o arrástrala aquí</b></div>
+    <input type="file" id="fileBg" accept="image/*" hidden>
+    <div class="hint" style="margin-bottom:10px">La acomodamos automáticamente para llenar el marco 16:9. Si no queda como quieres, <b>arrástrala sobre el lienzo grande</b> para reencuadrarla y usa <b>Zoom fondo</b> para acercar.</div>
     <div class="searchbar">
       <input type="text" id="q" spellcheck="false" placeholder="ej. escuela pública México">
       <button id="btnSearch">Buscar</button>
@@ -302,7 +305,9 @@ hr{border:none; border-top:.5px solid rgba(255,255,255,.06); margin:18px 0}
     <button class="btn-more" id="btnMore" style="display:none">+ Cargar más fotos</button>
     <div class="lic" id="lic"></div>
     <div class="sl" style="margin-top:10px"><label>Oscurecer</label><input type="range" id="webDark" min="0" max="80" value="38"><output id="oDark">38</output></div>
+    <div class="sl"><label>Zoom fondo</label><input type="range" id="webZoom" min="100" max="250" value="100"><output id="oZoom">100</output></div>
     <div class="hint">Sube <b>Oscurecer</b> si el texto no se lee sobre la foto; bájalo para que la foto luzca más.</div>
+    <button class="mini-btn" id="bgReset" style="margin-top:8px; width:100%">↺ Restablecer encuadre del fondo</button>
   </div>
 
   <hr>
@@ -390,7 +395,8 @@ const S = {
   pScale:1, pX:0, pY:0, pGlow:true, pFlip:false,
   webUrl:"", webLic:"", webDark:0.38, q:"",
   webAngle:"", webReason:"", webCtr:null,   /* razonamiento y CTR estimado de la foto elegida — RLR */
-  hScale:2, hX:0, hY:0   /* foto de la opción Híbrida — 2x de base por defecto, movible/redimensionable con el mouse o el dedo */
+  hScale:2, hX:0, hY:0,  /* foto de la opción Híbrida — 2x de base por defecto, movible/redimensionable con el mouse o el dedo */
+  webScale:1, webPanX:0, webPanY:0, webIsUpload:false  /* encuadre de la foto de fondo (Llamativa/Híbrida) — zoom + arrastre */
 };
 
 /* ---------- assets remotos (GitHub Pages) ---------- */
@@ -645,12 +651,28 @@ function drawPhotoSmall(ctx, interactive){
   ctx.restore();
   if (interactive) drawPhotoHandles(ctx, b);
 }
-function drawCover(ctx, img){
-  const s = Math.max(W / img.width, H / img.height) * 1.04;
+/* medidas del "cover" del fondo con el zoom aplicado + los márgenes de arrastre
+   disponibles antes de dejar huecos en los bordes — una sola fuente de verdad para
+   dibujar Y para el arrastre/zoom del fondo (Llamativa/Híbrida) — RLR */
+function bgFit(img){
+  const base = Math.max(W / img.width, H / img.height) * 1.04;
+  const s = base * S.webScale;
   const w = img.width * s, h = img.height * s;
+  return { w, h, maxPanX: Math.max(0, (w - W) / 2), maxPanY: Math.max(0, (h - H) / 2) };
+}
+function clampBgPan(img){
+  if (!img) return;
+  const f = bgFit(img);
+  S.webPanX = clamp(S.webPanX, -f.maxPanX, f.maxPanX);
+  S.webPanY = clamp(S.webPanY, -f.maxPanY, f.maxPanY);
+}
+function drawCover(ctx, img){
+  const f = bgFit(img);
+  const x = (W - f.w) / 2 + S.webPanX;
+  const y = (H - f.h) / 2 + S.webPanY;
   ctx.save();
   ctx.filter = "brightness(.95) saturate(.92)";
-  ctx.drawImage(img, (W - w)/2, (H - h)/2, w, h);
+  ctx.drawImage(img, x, y, f.w, f.h);
   ctx.restore();
 }
 function drawVignette(ctx){
@@ -806,6 +828,9 @@ function syncPhotoControlsUI(){
   $("pX").value = Math.round(S.pX); $("oX").textContent = Math.round(S.pX);
   $("pY").value = Math.round(S.pY); $("oY").textContent = Math.round(S.pY);
 }
+function bgDraggable(){
+  return (S.variant === "llamativa" || S.variant === "hibrida") && !!IMG.web;
+}
 let drag = null;
 /* hover: solo cambia el cursor cuando el puntero está sobre el lienzo — RLR */
 function onCanvasHover(e){
@@ -813,24 +838,32 @@ function onCanvasHover(e){
   const variant = draggableVariant();
   const b = variant && photoBounds(variant);
   const region = b ? hitRegion(toLogical(e), b) : null;
-  cvMain.style.cursor = region === "resize" ? "nwse-resize" : region === "move" ? "grab" : "default";
+  if (region){ cvMain.style.cursor = region === "resize" ? "nwse-resize" : "grab"; return; }
+  cvMain.style.cursor = bgDraggable() ? "grab" : "default";
 }
 function onPointerDown(e){
   const variant = draggableVariant();
   const b = variant && photoBounds(variant);
-  if (!b) return;
   const p = toLogical(e);
-  const region = hitRegion(p, b);
-  if (!region) return;
-  try { cvMain.setPointerCapture(e.pointerId); } catch(_){} /* puede fallar en algunos navegadores/touch — no debe cortar el arrastre */
-  drag = {
-    variant, region, startPX: p.x, startPY: p.y, startBounds: b,
-    startScale: variant === "presidencial" ? S.pScale : S.hScale,
-    startOffX: variant === "presidencial" ? S.pX : S.hX,
-    startOffY: variant === "presidencial" ? S.pY : S.hY,
-  };
-  cvMain.style.cursor = region === "resize" ? "nwse-resize" : "grabbing";
-  e.preventDefault();
+  const region = b ? hitRegion(p, b) : null;
+  if (region){
+    try { cvMain.setPointerCapture(e.pointerId); } catch(_){} /* puede fallar en algunos navegadores/touch — no debe cortar el arrastre */
+    drag = {
+      kind: "photo", variant, region, startPX: p.x, startPY: p.y, startBounds: b,
+      startScale: variant === "presidencial" ? S.pScale : S.hScale,
+      startOffX: variant === "presidencial" ? S.pX : S.hX,
+      startOffY: variant === "presidencial" ? S.pY : S.hY,
+    };
+    cvMain.style.cursor = region === "resize" ? "nwse-resize" : "grabbing";
+    e.preventDefault();
+    return;
+  }
+  if (bgDraggable()){
+    try { cvMain.setPointerCapture(e.pointerId); } catch(_){}
+    drag = { kind: "bg", startPX: p.x, startPY: p.y, startPanX: S.webPanX, startPanY: S.webPanY };
+    cvMain.style.cursor = "grabbing";
+    e.preventDefault();
+  }
 }
 /* el movimiento y la suelta van en window: así el arrastre sigue funcionando aunque
    el mouse/dedo se salga del lienzo a media maniobra — RLR */
@@ -838,6 +871,13 @@ function onWindowPointerMove(e){
   if (!drag) return;
   const p = toLogical(e);
   const dx = p.x - drag.startPX, dy = p.y - drag.startPY;
+  if (drag.kind === "bg"){
+    S.webPanX = drag.startPanX + dx;
+    S.webPanY = drag.startPanY + dy;
+    clampBgPan(IMG.web);
+    schedule();
+    return;
+  }
   if (drag.region === "move"){
     if (drag.variant === "presidencial"){
       S.pX = clamp(drag.startOffX + dx, -500, 500);
@@ -858,7 +898,7 @@ function onWindowPointerUp(e){
   if (!drag) return;
   try { cvMain.releasePointerCapture(e.pointerId); } catch(_){}
   drag = null;
-  cvMain.style.cursor = "default";
+  cvMain.style.cursor = bgDraggable() ? "grab" : "default";
   save();
 }
 cvMain.addEventListener("pointerdown", onPointerDown);
@@ -910,6 +950,10 @@ function pickImage(item, el){
   S.webAngle = item.angle || "";
   S.webReason = item.reason || "";
   S.webCtr = typeof item.ctr === "number" ? item.ctr : null;
+  S.webIsUpload = false;
+  S.webScale = 1; S.webPanX = 0; S.webPanY = 0;
+  dropBg.innerHTML = "Sube tu propia foto de fondo<br><b>o arrástrala aquí</b>";
+  $("webZoom").value = 100; $("oZoom").textContent = 100;
   updateLicText();
   loadRemote("web", item.url);
   save();
@@ -1204,6 +1248,53 @@ $("pReset").onclick = () => {
 };
 $("pFlip").onclick = () => { S.pFlip = !S.pFlip; schedule(); };
 
+/* ---------- foto de fondo subida por el usuario (Llamativa/Híbrida) ---------- */
+const dropBg = $("dropBg"), fileBg = $("fileBg");
+dropBg.onclick = () => fileBg.click();
+["dragover","dragenter"].forEach(ev => dropBg.addEventListener(ev, e => { e.preventDefault(); dropBg.classList.add("over"); }));
+["dragleave","drop"].forEach(ev => dropBg.addEventListener(ev, e => { e.preventDefault(); dropBg.classList.remove("over"); }));
+dropBg.addEventListener("drop", e => { const f = e.dataTransfer.files[0]; if (f) loadCustomBackground(f); });
+fileBg.onchange = () => { if (fileBg.files[0]) loadCustomBackground(fileBg.files[0]); };
+function loadCustomBackground(f){
+  const rd = new FileReader();
+  rd.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      IMG.web = img;
+      S.webUrl = ""; S.webLic = ""; S.webAngle = ""; S.webReason = ""; S.webCtr = null;
+      S.webIsUpload = true;
+      S.webScale = 1; S.webPanX = 0;
+      /* acomodo automático: si la foto es más alta que ancha, el recorte "cover"
+         corta arriba y abajo por igual — sesgamos para mostrar más la parte de
+         arriba (donde suele estar la cara/el sujeto) en vez de cortar al centro */
+      const ar = img.width / img.height;
+      if (ar < 16/9){
+        const f2 = bgFit(img);
+        S.webPanY = f2.maxPanY * 0.55;
+      } else {
+        S.webPanY = 0;
+      }
+      dropBg.innerHTML = "✓ Usando tu foto de fondo.<br><b>Clic para cambiarla</b>";
+      $("lic").textContent = "Tu foto (no se sube a ningún servidor, se queda en tu navegador).";
+      selectVariant("llamativa");
+      save(); schedule();
+    };
+    img.src = rd.result;
+  };
+  rd.readAsDataURL(f);
+}
+$("bgReset").onclick = () => {
+  S.webScale = 1; S.webPanX = 0; S.webPanY = 0;
+  $("webZoom").value = 100; $("oZoom").textContent = 100;
+  save(); schedule();
+};
+$("webZoom").addEventListener("input", () => {
+  S.webScale = $("webZoom").value / 100;
+  $("oZoom").textContent = $("webZoom").value;
+  clampBgPan(IMG.web);
+  save(); schedule();
+});
+
 /* ---------- bindings ---------- */
 function bind(id, key, isCheck){
   const el = $(id);
@@ -1249,11 +1340,17 @@ function restore(){
   $("pX").value = S.pX; $("oX").textContent = S.pX;
   $("pY").value = S.pY; $("oY").textContent = S.pY;
   $("webDark").value = Math.round(S.webDark*100); $("oDark").textContent = Math.round(S.webDark*100);
+  $("webZoom").value = Math.round(S.webScale*100); $("oZoom").textContent = Math.round(S.webScale*100);
   document.querySelectorAll(".vcard").forEach(x => x.classList.toggle("on", x.dataset.v === S.variant));
   if (S.q){ $("q").value = S.q; qDirty = true; } else suggestQuery();
   if (S.webUrl){
     loadRemote("web", S.webUrl);
     updateLicText();
+  } else if (S.webIsUpload){
+    /* la imagen subida no se guarda entre sesiones (no cabe bien en localStorage) —
+       se reinicia el encuadre y se avisa, igual que ya pasa con "Tu foto" — RLR */
+    S.webIsUpload = false; S.webScale = 1; S.webPanX = 0; S.webPanY = 0;
+    $("webZoom").value = 100; $("oZoom").textContent = 100;
   }
 }
 
