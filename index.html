@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- ============================================================
-     SuperLeads · Generador de Portadas de YouTube (1280×720)
+     SuperLeads · Generador de Portadas de YouTube (1280×720) · v2
      Autor: Ricardo López Reyero — RLR
      build: eye · rev 181218
      ============================================================ -->
@@ -35,12 +35,12 @@ body{
 /* ---------- header ---------- */
 header{
   display:flex; align-items:center; justify-content:space-between;
-  padding:14px 26px; border-bottom:.5px solid rgba(86,239,159,.12);
+  padding:13px 26px; border-bottom:.5px solid rgba(86,239,159,.12);
   background:rgba(0,18,64,.97); backdrop-filter:blur(16px); z-index:10;
 }
-.brand{font-weight:800; font-size:18px; letter-spacing:-.4px}
-.brand em{color:var(--green); font-style:normal}
-.brand span{color:var(--txt-lab); font-weight:500; font-size:12px; margin-left:12px; letter-spacing:0}
+.brand{display:flex; align-items:center; gap:14px}
+.brand img{height:24px; display:block}
+.brand span{color:var(--txt-lab); font-weight:500; font-size:12px}
 .hbtns{display:flex; gap:10px}
 .btn{
   display:inline-flex; align-items:center; gap:8px; border:none; cursor:pointer;
@@ -61,22 +61,37 @@ aside{
 aside::-webkit-scrollbar{width:8px}
 aside::-webkit-scrollbar-thumb{background:#0a3070; border-radius:4px}
 .stage{
-  flex:1; display:flex; align-items:center; justify-content:center;
-  padding:34px; min-width:0; position:relative;
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:16px; padding:24px 34px; min-width:0; position:relative;
   background:
     radial-gradient(ellipse 60% 50% at 70% 0%, rgba(0,57,200,.10), transparent),
     var(--navy-deep);
 }
-.canvas-wrap{position:relative; max-width:100%; max-height:100%; aspect-ratio:16/9; width:min(100%, calc((100vh - 180px) * 16 / 9));}
-canvas#cv{
+.main-wrap{position:relative; aspect-ratio:16/9; width:min(100%, calc((100vh - 320px) * 16 / 9)); min-width:340px}
+canvas#cvMain{
   width:100%; height:100%; display:block; border-radius:14px;
   box-shadow:0 30px 90px rgba(0,0,0,.55), 0 0 0 .5px rgba(255,255,255,.09);
   background:var(--navy-deep);
 }
 .dim{
-  position:absolute; right:2px; top:-26px; font-size:10.5px; font-weight:700;
+  position:absolute; right:2px; top:-24px; font-size:10.5px; font-weight:700;
   letter-spacing:1.3px; color:var(--txt-lab); text-transform:uppercase;
 }
+.variants{display:flex; gap:14px; width:min(100%, calc((100vh - 320px) * 16 / 9)); min-width:340px}
+.vcard{
+  flex:1; cursor:pointer; border-radius:12px; padding:8px 8px 7px;
+  background:var(--panel); border:1.5px solid var(--panel-b);
+  transition:border-color .2s, transform .25s var(--ease);
+}
+.vcard:hover{transform:translateY(-3px)}
+.vcard.on{border-color:var(--green); background:rgba(86,239,159,.06)}
+.vcard canvas{width:100%; aspect-ratio:16/9; display:block; border-radius:7px; background:var(--navy-deep)}
+.vcard .vlab{
+  display:flex; align-items:center; gap:7px; margin-top:7px; padding:0 3px;
+  font-size:10.5px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--txt-sub);
+}
+.vcard.on .vlab{color:var(--green)}
+.vcard .vlab i{width:5px;height:5px;border-radius:50%;background:currentColor;font-style:normal}
 /* ---------- control groups ---------- */
 .grp{margin-bottom:22px; animation:fIn .3s var(--ease)}
 @keyframes fIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
@@ -94,35 +109,27 @@ textarea{min-height:74px; line-height:1.5}
 select{appearance:none; cursor:pointer}
 .hint{font-size:11px; color:var(--txt-lab); line-height:1.5; margin-top:7px}
 .hint b{color:var(--txt-sub); font-weight:600}
-/* layouts selector */
-.layouts{display:grid; grid-template-columns:repeat(3,1fr); gap:8px}
-.lay{
-  border:.5px solid var(--panel-b); background:var(--panel); border-radius:10px;
-  padding:10px 6px 8px; text-align:center; cursor:pointer;
-  transition:border-color .2s, transform .2s var(--ease);
-}
-.lay:hover{transform:translateY(-2px)}
-.lay.on{border-color:rgba(86,239,159,.55); background:rgba(86,239,159,.07)}
-.lay svg{width:44px; height:26px; display:block; margin:0 auto 6px}
-.lay div{font-size:10.5px; font-weight:700; letter-spacing:.3px; color:var(--txt-sub)}
-.lay.on div{color:var(--green)}
 /* chips */
-.chips{display:flex; flex-direction:column; gap:6px; max-height:170px; overflow-y:auto; scrollbar-width:thin}
+.chips{display:flex; flex-direction:column; gap:6px; max-height:150px; overflow-y:auto; scrollbar-width:thin}
 .chip{
   text-align:left; background:var(--panel); border:.5px solid var(--panel-b); color:var(--txt-sub);
   font-family:inherit; font-size:11.5px; font-weight:600; line-height:1.35;
   padding:8px 11px; border-radius:8px; cursor:pointer; transition:border-color .2s, color .2s;
 }
 .chip:hover{border-color:rgba(86,239,159,.4); color:#fff}
+.qchips{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
+.qchip{
+  background:var(--panel); border:.5px solid var(--panel-b); color:var(--txt-lab);
+  font-family:inherit; font-size:10.5px; font-weight:700; padding:5px 10px;
+  border-radius:20px; cursor:pointer; transition:color .2s, border-color .2s;
+}
+.qchip:hover{color:var(--green); border-color:rgba(86,239,159,.4)}
 /* toggles */
 .row{display:flex; align-items:center; justify-content:space-between; padding:7px 0}
 .row label{font-size:12.5px; font-weight:600; color:#dfe8ff}
 .sw{position:relative; width:36px; height:20px; flex-shrink:0; cursor:pointer}
 .sw input{opacity:0; width:0; height:0}
-.sw i{
-  position:absolute; inset:0; border-radius:20px; background:rgba(255,255,255,.12);
-  transition:background .2s;
-}
+.sw i{position:absolute; inset:0; border-radius:20px; background:rgba(255,255,255,.12); transition:background .2s}
 .sw i:before{
   content:""; position:absolute; width:14px; height:14px; border-radius:50%;
   background:#fff; top:3px; left:3px; transition:transform .2s var(--ease);
@@ -138,15 +145,39 @@ input[type=range]::-webkit-slider-thumb{
   appearance:none; width:14px; height:14px; border-radius:50%;
   background:var(--green); box-shadow:0 2px 8px rgba(86,239,159,.4);
 }
+/* búsqueda de imagen */
+.searchbar{display:flex; gap:8px}
+.searchbar input{flex:1}
+.searchbar button{
+  background:var(--green); color:var(--navy); border:none; border-radius:10px;
+  font-family:inherit; font-weight:800; font-size:12px; padding:0 16px; cursor:pointer;
+  transition:transform .2s var(--ease);
+}
+.searchbar button:hover{transform:translateY(-1px)}
+.results{display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin-top:10px}
+.results .r{
+  position:relative; border-radius:7px; overflow:hidden; cursor:pointer;
+  border:1.5px solid transparent; aspect-ratio:16/10; background:var(--panel);
+  transition:border-color .2s;
+}
+.results .r img{width:100%; height:100%; object-fit:cover; display:block}
+.results .r:hover{border-color:rgba(86,239,159,.5)}
+.results .r.sel{border-color:var(--green)}
+.results .r.sel:after{
+  content:"✓"; position:absolute; right:4px; top:4px; width:18px; height:18px;
+  background:var(--green); color:var(--navy); font-size:11px; font-weight:800;
+  border-radius:50%; display:flex; align-items:center; justify-content:center;
+}
+.lic{font-size:10px; color:var(--txt-lab); margin-top:7px; line-height:1.4}
+.searching{font-size:11px; color:var(--green); margin-top:8px; display:none}
 /* dropzone */
 .drop{
-  border:1.5px dashed rgba(255,255,255,.16); border-radius:10px; padding:16px 12px;
-  text-align:center; font-size:12px; color:var(--txt-sub); cursor:pointer;
+  border:1.5px dashed rgba(255,255,255,.16); border-radius:10px; padding:12px;
+  text-align:center; font-size:11.5px; color:var(--txt-sub); cursor:pointer;
   transition:border-color .2s, background .2s;
 }
 .drop:hover,.drop.over{border-color:rgba(86,239,159,.5); background:rgba(86,239,159,.05)}
 .drop b{color:var(--green); font-weight:700}
-.drop.loaded{border-style:solid; border-color:rgba(86,239,159,.35)}
 .two{display:grid; grid-template-columns:1fr 1fr; gap:8px}
 .mini-btn{
   background:var(--panel); border:.5px solid var(--panel-b); color:var(--txt-sub);
@@ -165,7 +196,8 @@ hr{border:none; border-top:.5px solid rgba(255,255,255,.06); margin:18px 0}
 @media(max-width:860px){
   main{flex-direction:column; overflow-y:auto}
   aside{width:100%; border-right:none; order:2}
-  .stage{padding:18px; min-height:280px}
+  .stage{padding:16px; min-height:auto}
+  .main-wrap,.variants{width:100%; min-width:0}
   body{overflow:auto}
 }
 </style>
@@ -173,7 +205,10 @@ hr{border:none; border-top:.5px solid rgba(255,255,255,.06); margin:18px 0}
 <body>
 
 <header>
-  <div class="brand">Super<em>Leads</em><span>Generador de portadas · YouTube</span></div>
+  <div class="brand">
+    <img id="brandLogo" alt="SuperLeads">
+    <span>Generador de portadas · YouTube</span>
+  </div>
   <div class="hbtns">
     <button class="btn btn-ghost" id="btnCopy">Copiar</button>
     <button class="btn btn-ghost" id="btn2x">PNG 2×</button>
@@ -188,24 +223,6 @@ hr{border:none; border-top:.5px solid rgba(255,255,255,.06); margin:18px 0}
 <aside>
 
   <div class="grp">
-    <div class="eyebrow"><div class="ew-dot"></div><div class="ew-t">Plantilla</div></div>
-    <div class="layouts" id="layouts">
-      <div class="lay" data-l="editorial">
-        <svg viewBox="0 0 44 26"><rect width="44" height="26" rx="3" fill="#001a5e"/><rect x="5" y="5" width="12" height="2.4" rx="1.2" fill="#56EF9F" opacity=".7"/><rect x="5" y="10" width="20" height="3.4" rx="1.4" fill="#fff"/><rect x="5" y="15" width="16" height="3.4" rx="1.4" fill="#fff" opacity=".85"/><circle cx="35" cy="15" r="8" fill="#2A89FB" opacity=".55"/></svg>
-        <div>Editorial</div>
-      </div>
-      <div class="lay" data-l="impacto">
-        <svg viewBox="0 0 44 26"><rect width="44" height="26" rx="3" fill="#001a5e"/><rect x="7" y="6" width="12" height="2.2" rx="1.1" fill="#56EF9F" opacity=".7"/><rect x="7" y="11" width="30" height="4" rx="1.6" fill="#fff"/><rect x="7" y="17" width="22" height="4" rx="1.6" fill="#fff" opacity=".85"/></svg>
-        <div>Impacto</div>
-      </div>
-      <div class="lay" data-l="dato">
-        <svg viewBox="0 0 44 26"><rect width="44" height="26" rx="3" fill="#001a5e"/><text x="7" y="15" font-size="11" font-weight="800" fill="#56EF9F" font-family="sans-serif">34%</text><rect x="7" y="18" width="26" height="3" rx="1.4" fill="#fff"/></svg>
-        <div>Dato</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="grp">
     <div class="eyebrow"><div class="ew-dot"></div><div class="ew-t">Etiqueta superior</div></div>
     <input type="text" id="badge" maxlength="48" spellcheck="false">
     <div class="row" style="margin-top:4px"><label>Mostrar etiqueta</label><label class="sw"><input type="checkbox" id="badgeOn" checked><i></i></label></div>
@@ -214,12 +231,7 @@ hr{border:none; border-top:.5px solid rgba(255,255,255,.06); margin:18px 0}
   <div class="grp"><!-- RLR -->
     <div class="eyebrow"><div class="ew-dot"></div><div class="ew-t">Título</div></div>
     <textarea id="title" spellcheck="false"></textarea>
-    <div class="hint">Encierra palabras entre <b>*asteriscos*</b> para resaltarlas en <b>verde itálico</b>. Usa Enter para forzar saltos de línea.</div>
-  </div>
-
-  <div class="grp" id="grpStat" style="display:none">
-    <div class="eyebrow"><div class="ew-dot"></div><div class="ew-t">Cifra gigante</div></div>
-    <input type="text" id="stat" maxlength="14" spellcheck="false" placeholder="34%">
+    <div class="hint">Encierra palabras entre <b>*asteriscos*</b> para resaltarlas en <b>verde itálico</b>. Enter fuerza salto de línea.</div>
   </div>
 
   <div class="grp">
@@ -234,19 +246,37 @@ hr{border:none; border-top:.5px solid rgba(255,255,255,.06); margin:18px 0}
 
   <hr>
 
-  <div class="grp" id="grpPhoto">
-    <div class="eyebrow"><div class="ew-dot"></div><div class="ew-t">Tu foto</div></div>
-    <div class="drop" id="drop">Arrastra tu foto aquí o <b>haz clic para elegir</b><br><span style="font-size:10.5px;opacity:.75">Ideal: PNG con fondo recortado</span></div>
+  <div class="grp">
+    <div class="eyebrow"><div class="ew-dot"></div><div class="ew-t">Imagen de internet · opción llamativa</div></div>
+    <div class="searchbar">
+      <input type="text" id="q" spellcheck="false" placeholder="ej. escuela pública México">
+      <button id="btnSearch">Buscar</button>
+    </div>
+    <div class="qchips">
+      <button class="qchip">escuela pública México</button>
+      <button class="qchip">salón de clases niños</button>
+      <button class="qchip">classroom students Mexico</button>
+      <button class="qchip">school children learning</button>
+    </div>
+    <div class="searching" id="searching">Buscando en Wikimedia Commons…</div>
+    <div class="results" id="results"></div>
+    <div class="lic" id="lic"></div>
+  </div>
+
+  <hr>
+
+  <div class="grp">
+    <div class="eyebrow"><div class="ew-dot"></div><div class="ew-t">Tu foto · opción presidencial</div></div>
+    <div class="drop" id="drop">Usando tu foto oficial (GitHub).<br><b>Clic aquí para usar otra foto</b></div>
     <input type="file" id="file" accept="image/*" hidden>
-    <div id="photoCtl" style="display:none; margin-top:10px">
+    <div id="photoCtl" style="margin-top:10px">
       <div class="sl"><label>Tamaño</label><input type="range" id="pScale" min="55" max="240" value="100"><output id="oScale">100</output></div>
       <div class="sl"><label>Horizontal</label><input type="range" id="pX" min="-500" max="500" value="0"><output id="oX">0</output></div>
       <div class="sl"><label>Vertical</label><input type="range" id="pY" min="-260" max="420" value="0"><output id="oY">0</output></div>
       <div class="row"><label>Luz de acento (violeta)</label><label class="sw"><input type="checkbox" id="pGlow" checked><i></i></label></div>
-      <div class="row"><label>Fundir bordes con el fondo</label><label class="sw"><input type="checkbox" id="pFade"><i></i></label></div>
       <div class="two" style="margin-top:8px">
         <button class="mini-btn" id="pFlip">↔ Voltear</button>
-        <button class="mini-btn" id="pClear">✕ Quitar foto</button>
+        <button class="mini-btn" id="pReset">↺ Foto oficial</button>
       </div>
     </div>
   </div>
@@ -261,20 +291,25 @@ hr{border:none; border-top:.5px solid rgba(255,255,255,.06); margin:18px 0}
       <option value="radial">Foco radial superior</option>
     </select>
     <div style="margin-top:8px">
+      <div class="row"><label>Logo SuperLeads</label><label class="sw"><input type="checkbox" id="logoOn"><i></i></label></div>
       <div class="row"><label>Círculos decorativos</label><label class="sw"><input type="checkbox" id="circles" checked><i></i></label></div>
       <div class="row"><label>Malla de puntos fina</label><label class="sw"><input type="checkbox" id="dots"><i></i></label></div>
       <div class="row"><label>Viñeta cinematográfica</label><label class="sw"><input type="checkbox" id="vignette" checked><i></i></label></div>
       <div class="row"><label>Subrayado verde bajo el título</label><label class="sw"><input type="checkbox" id="underline"><i></i></label></div>
-      <div class="row"><label>Logo SuperLeads</label><label class="sw"><input type="checkbox" id="logoOn" checked><i></i></label></div>
     </div>
   </div>
 
 </aside>
 
 <div class="stage">
-  <div class="canvas-wrap">
-    <div class="dim">1280 × 720 px</div>
-    <canvas id="cv" width="1280" height="720"></canvas>
+  <div class="main-wrap">
+    <div class="dim" id="dimLab">1280 × 720 px · opción 1</div>
+    <canvas id="cvMain"></canvas>
+  </div>
+  <div class="variants" id="variants">
+    <div class="vcard on" data-v="academica"><canvas data-cv="academica"></canvas><div class="vlab"><i></i>1 · Académica</div></div>
+    <div class="vcard" data-v="presidencial"><canvas data-cv="presidencial"></canvas><div class="vlab"><i></i>2 · Presidencial</div></div>
+    <div class="vcard" data-v="llamativa"><canvas data-cv="llamativa"></canvas><div class="vlab"><i></i>3 · Llamativa</div></div>
   </div>
 </div>
 </main>
@@ -283,7 +318,7 @@ hr{border:none; border-top:.5px solid rgba(255,255,255,.06); margin:18px 0}
 
 <script>
 /* ============================================================
-   Motor de render — Ricardo López Reyero (RLR)
+   Motor de render v2 — Ricardo López Reyero (RLR)
    ============================================================ */
 const _RLR = "Ricardo López Reyero";           /* firma de autoría */
 const _k = "EYE", _rev = 181218;               /* candado: ROT13(RLR) · posiciones alfabeto R·L·R */
@@ -293,20 +328,35 @@ const C = {
   blueMid:"#2A89FB", sub:"#7a9fd4", lab:"#4a6aaa"
 };
 const W = 1280, H = 720;
-const cv = document.getElementById("cv");
+const SS = 2;                                  /* supersampleo del preview (nitidez) */
+const ASSETS = "https://ricardolopezreyero.github.io/YouTube_Portadas/assets/";
 const $ = id => document.getElementById(id);
 
 /* ---------- estado ---------- */
 const S = {
-  layout:"editorial",
+  variant:"academica",
   badge:"DOCUMENTO DE MERCADO · 2026",
   badgeOn:true,
   title:"La realidad de la educación pública en *México*",
   subtitle:"",
-  stat:"34%",
-  bg:"grad", circles:true, dots:false, vignette:true, underline:false, logoOn:true,
-  photo:null, pScale:1, pX:0, pY:0, pGlow:true, pFade:false, pFlip:false
+  bg:"grad", circles:true, dots:false, vignette:true, underline:false, logoOn:false,
+  pScale:1, pX:0, pY:0, pGlow:true, pFlip:false,
+  webUrl:"", webLic:"", q:""
 };
+
+/* ---------- assets remotos (GitHub Pages) ---------- */
+const IMG = { photo:null, custom:null, logo:null, web:null };
+function loadRemote(key, url){
+  const im = new Image();
+  im.crossOrigin = "anonymous";
+  im.onload = () => { IMG[key] = im; schedule(); };
+  im.onerror = () => { if (key === "web") toast("No se pudo cargar la imagen"); };
+  im.src = url;
+}
+loadRemote("photo", ASSETS + "ricardo.png");
+loadRemote("logo",  ASSETS + "sl_blanco.svg");
+$("brandLogo").src = ASSETS + "sl_blanco.svg";
+const activePhoto = () => IMG.custom || IMG.photo;
 
 /* ---------- ideas precargadas ---------- */
 const IDEAS = [
@@ -323,23 +373,21 @@ const IDEAS = [
   "El *34%* puede pagar colegio privado. Solo el *10%* lo hace.",
   "Tu colegio no necesita más publicidad. Necesita un *mejor sistema*."
 ];
-const chipsEl = $("chips");
 IDEAS.forEach(t => {
   const b = document.createElement("button");
   b.className = "chip";
   b.textContent = t.replace(/\*/g,"");
-  b.onclick = () => { S.title = t; $("title").value = t; save(); draw(); };
-  chipsEl.appendChild(b);
+  b.onclick = () => { S.title = t; $("title").value = t; suggestQuery(); save(); schedule(); };
+  $("chips").appendChild(b);
 });
 
-/* ---------- parsing del título (tokens con resaltado) ---------- */
+/* ---------- parsing del título ---------- */
 /* RLR */
 function parseTitle(str){
   const lines = str.split("\n");
   const out = [];
   lines.forEach((line, li) => {
     if (li > 0) out.push({br:true});
-    // separa por *resaltado*
     const parts = line.split(/(\*[^*]+\*)/g).filter(Boolean);
     parts.forEach(p => {
       const hl = p.startsWith("*") && p.endsWith("*");
@@ -349,12 +397,9 @@ function parseTitle(str){
   });
   return out;
 }
-
 function fontFor(size, hl){
   return (hl ? "italic 800 " : "800 ") + size + "px 'Plus Jakarta Sans'";
 }
-
-/* envuelve tokens en líneas que quepan en maxW */
 function wrapTokens(ctx, tokens, size, maxW){
   ctx.letterSpacing = (-(size*0.03)).toFixed(1) + "px";
   const lines = [[]];
@@ -366,15 +411,13 @@ function wrapTokens(ctx, tokens, size, maxW){
     const w = ctx.measureText(t.w).width;
     const need = (lines[lines.length-1].length ? spaceW : 0) + w;
     if (cur + need > maxW && lines[lines.length-1].length){
-      lines.push([{...t, w:t.w, px:w}]); cur = w;
+      lines.push([{...t, px:w}]); cur = w;
     } else {
       lines[lines.length-1].push({...t, px:w}); cur += need;
     }
   }
   return { lines, spaceW };
 }
-
-/* busca el tamaño de fuente más grande que quepa */
 function fitTitle(ctx, tokens, maxW, maxH, startSize){
   for (let size = startSize; size >= 30; size -= 2){
     const { lines, spaceW } = wrapTokens(ctx, tokens, size, maxW);
@@ -384,12 +427,13 @@ function fitTitle(ctx, tokens, maxW, maxH, startSize){
   const { lines, spaceW } = wrapTokens(ctx, tokens, 30, maxW);
   return { size:30, lines, lh:33, spaceW };
 }
-
-function drawTitleBlock(ctx, fit, x, y){
+function titleHeight(fit){ return fit.lines.length * fit.lh; }
+function drawTitleBlock(ctx, fit, x, y, shadow){
   ctx.textBaseline = "alphabetic";
   ctx.letterSpacing = (-(fit.size*0.03)).toFixed(1) + "px";
   let yy = y + fit.size * 0.86;
-  let lastLineW = 0;
+  ctx.save();
+  if (shadow){ ctx.shadowColor = "rgba(0,6,26,.55)"; ctx.shadowBlur = 26; ctx.shadowOffsetY = 4; }
   for (const line of fit.lines){
     let xx = x;
     for (const t of line){
@@ -398,11 +442,11 @@ function drawTitleBlock(ctx, fit, x, y){
       ctx.fillText(t.w, xx, yy);
       xx += t.px + fit.spaceW;
     }
-    lastLineW = xx - fit.spaceW - x;
     yy += fit.lh;
   }
+  ctx.restore();
   ctx.letterSpacing = "0px";
-  return { bottom: yy - fit.lh + fit.size*0.28, lastLineW };
+  return { bottom: yy - fit.lh + fit.size*0.28 };
 }
 
 /* ---------- piezas ---------- */
@@ -415,6 +459,7 @@ function drawBadge(ctx, x, y, text){
   const padX = 24, h = 46, dotR = 5, gap = 13;
   const w = padX*2 + dotR*2 + gap + tw;
   ctx.beginPath(); ctx.roundRect(x, y, w, h, h/2);
+  ctx.fillStyle = "rgba(0,18,64,.55)"; ctx.fill();
   ctx.fillStyle = "rgba(86,239,159,.10)"; ctx.fill();
   ctx.strokeStyle = "rgba(86,239,159,.35)"; ctx.lineWidth = 1.4; ctx.stroke();
   ctx.beginPath(); ctx.arc(x+padX+dotR, y+h/2, dotR, 0, 7);
@@ -424,18 +469,21 @@ function drawBadge(ctx, x, y, text){
   ctx.letterSpacing = "0px"; ctx.textBaseline = "alphabetic";
   return h;
 }
-
-function drawLogo(ctx, x, y){
-  const fs = 30;
-  ctx.textBaseline = "alphabetic";
-  ctx.letterSpacing = "-0.8px";
-  ctx.font = "800 " + fs + "px 'Plus Jakarta Sans'";
-  ctx.fillStyle = "#fff"; ctx.fillText("Super", x, y);
-  const w1 = ctx.measureText("Super").width;
-  ctx.fillStyle = C.green; ctx.fillText("Leads", x + w1, y);
-  ctx.letterSpacing = "0px";
+function drawLogo(ctx){
+  if (!S.logoOn) return;
+  const lw = 205;
+  if (IMG.logo && IMG.logo.naturalWidth){
+    const lh = lw * IMG.logo.naturalHeight / IMG.logo.naturalWidth;
+    ctx.drawImage(IMG.logo, 84, H - 50 - lh, lw, lh);
+  } else {  /* respaldo en texto */
+    ctx.textBaseline = "alphabetic"; ctx.letterSpacing = "-0.8px";
+    ctx.font = "800 30px 'Plus Jakarta Sans'";
+    ctx.fillStyle = "#fff"; ctx.fillText("Super", 84, H - 56);
+    const w1 = ctx.measureText("Super").width;
+    ctx.fillStyle = C.green; ctx.fillText("Leads", 84 + w1, H - 56);
+    ctx.letterSpacing = "0px";
+  }
 }
-
 function drawBackground(ctx){
   if (S.bg === "deep"){
     ctx.fillStyle = C.navyDeep; ctx.fillRect(0,0,W,H);
@@ -465,9 +513,8 @@ function drawBackground(ctx){
       }
   }
 }
-
 function drawPhoto(ctx){
-  const img = S.photo;
+  const img = activePhoto();
   if (!img) return;
   const baseH = 790 * S.pScale;
   const s = baseH / img.height;
@@ -488,20 +535,15 @@ function drawPhoto(ctx){
   }
   ctx.drawImage(img, x, y, w, h);
   ctx.restore();
-  if (S.pFade){
-    const bg = S.bg === "deep" ? C.navyDeep : "#000f38";
-    let g = ctx.createLinearGradient(x-2, 0, x + w*0.42, 0);
-    g.addColorStop(0, bg); g.addColorStop(1, "rgba(0,15,56,0)");
-    ctx.fillStyle = g; ctx.fillRect(x-2, y, w*0.44, h);
-    g = ctx.createLinearGradient(0, y-2, 0, y + h*0.35);
-    g.addColorStop(0, bg); g.addColorStop(1, "rgba(0,15,56,0)");
-    ctx.fillStyle = g; ctx.fillRect(x, y-2, w, h*0.37);
-    g = ctx.createLinearGradient(0, H, 0, H-170);
-    g.addColorStop(0, "rgba(0,10,36,.55)"); g.addColorStop(1, "rgba(0,10,36,0)");
-    ctx.fillStyle = g; ctx.fillRect(x, H-170, w, 170);
-  }
 }
-
+function drawCover(ctx, img){
+  const s = Math.max(W / img.width, H / img.height) * 1.04;
+  const w = img.width * s, h = img.height * s;
+  ctx.save();
+  ctx.filter = "brightness(.92) saturate(.9)";
+  ctx.drawImage(img, (W - w)/2, (H - h)/2, w, h);
+  ctx.restore();
+}
 function drawVignette(ctx){
   if (!S.vignette) return;
   const g = ctx.createRadialGradient(W/2, H/2, H*0.42, W/2, H/2, W*0.72);
@@ -509,32 +551,24 @@ function drawVignette(ctx){
   g.addColorStop(1, "rgba(0,6,26,.42)");
   ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
 }
-
-function drawUnderline(ctx, x, y){
-  if (!S.underline) return;
+function drawUnderline(ctx, x, y, force){
+  if (!S.underline && !force) return;
   ctx.beginPath(); ctx.roundRect(x + 3, y + 26, 130, 7, 4);
   ctx.fillStyle = C.green; ctx.fill();
 }
 
-/* ---------- composición por plantilla ---------- */
-function draw(){
-  const ctx = cv.getContext("2d");
-  render(ctx);
-}
-
-function render(ctx){
+/* ---------- las 3 opciones ---------- */
+function render(ctx, variant){
   ctx.clearRect(0,0,W,H);
-  drawBackground(ctx);
   const tokens = parseTitle(S.title || " ");
   const margin = 84;
 
-  if (S.layout === "editorial"){
-    drawPhoto(ctx);
+  if (variant === "academica"){
+    drawBackground(ctx);
     let y = 66;
     if (S.badgeOn && S.badge){ drawBadge(ctx, margin, y, S.badge); y += 46; }
     y += 38;
-    const maxW = S.photo ? 660 : 900;
-    const fit = fitTitle(ctx, tokens, maxW, 400, 94);
+    const fit = fitTitle(ctx, tokens, 940, 400, 96);
     const tb = drawTitleBlock(ctx, fit, margin, y);
     drawUnderline(ctx, margin, tb.bottom);
     if (S.subtitle){
@@ -542,62 +576,175 @@ function render(ctx){
       ctx.fillStyle = C.sub;
       ctx.fillText(S.subtitle, margin, tb.bottom + (S.underline ? 88 : 58));
     }
-    if (S.logoOn) drawLogo(ctx, margin, H - 56);
+    drawLogo(ctx);
+    drawVignette(ctx);
   }
 
-  else if (S.layout === "impacto"){
+  else if (variant === "presidencial"){
+    drawBackground(ctx);
     drawPhoto(ctx);
-    const maxW = S.photo ? 760 : 1090;
-    const fit = fitTitle(ctx, tokens, maxW, 430, 110);
-    const blockH = fit.lines.length * fit.lh;
-    const extra = (S.badgeOn && S.badge ? 92 : 0) + (S.subtitle ? 66 : 0);
-    let y = Math.max(64, (H - blockH - extra) / 2 - 12);
-    if (S.badgeOn && S.badge){ drawBadge(ctx, margin, y, S.badge); y += 92; }
-    const tb = drawTitleBlock(ctx, fit, margin, y);
-    drawUnderline(ctx, margin, tb.bottom);
-    if (S.subtitle){
-      ctx.font = "500 28px 'Plus Jakarta Sans'";
-      ctx.fillStyle = C.sub;
-      ctx.fillText(S.subtitle, margin, tb.bottom + (S.underline ? 92 : 62));
-    }
-    if (S.logoOn) drawLogo(ctx, margin, H - 56);
-  }
-
-  else { /* dato */
-    drawPhoto(ctx);
-    let y = 60;
+    let y = 66;
     if (S.badgeOn && S.badge){ drawBadge(ctx, margin, y, S.badge); y += 46; }
-    const stat = (S.stat || "").trim();
-    if (stat){
-      const statSize = stat.length <= 4 ? 240 : stat.length <= 7 ? 190 : 150;
-      ctx.font = "800 " + statSize + "px 'Plus Jakarta Sans'";
-      ctx.letterSpacing = (-(statSize*0.04)).toFixed(1) + "px";
-      ctx.save();
-      ctx.shadowColor = "rgba(86,239,159,.45)"; ctx.shadowBlur = 60;
-      ctx.fillStyle = C.green;
-      ctx.fillText(stat, margin - 6, y + statSize * 0.94);
-      ctx.restore();
-      ctx.letterSpacing = "0px";
-      y += statSize * 1.06;
-    }
-    y += 26;
-    const maxW = S.photo ? 700 : 1080;
-    const fit = fitTitle(ctx, tokens, maxW, H - y - 110, 72);
+    y += 38;
+    const fit = fitTitle(ctx, tokens, activePhoto() ? 660 : 900, 400, 94);
     const tb = drawTitleBlock(ctx, fit, margin, y);
     drawUnderline(ctx, margin, tb.bottom);
     if (S.subtitle){
-      ctx.font = "500 26px 'Plus Jakarta Sans'";
+      ctx.font = "500 27px 'Plus Jakarta Sans'";
       ctx.fillStyle = C.sub;
-      ctx.fillText(S.subtitle, margin, tb.bottom + (S.underline ? 84 : 56));
+      ctx.fillText(S.subtitle, margin, tb.bottom + (S.underline ? 88 : 58));
     }
-    if (S.logoOn) drawLogo(ctx, margin, H - 56);
+    drawLogo(ctx);
+    drawVignette(ctx);
   }
 
-  drawVignette(ctx);
+  else { /* llamativa */
+    if (IMG.web){
+      drawCover(ctx, IMG.web);
+      /* capas de legibilidad — RLR */
+      let g = ctx.createLinearGradient(0,0,W*0.78,0);
+      g.addColorStop(0, "rgba(0,14,50,.94)");
+      g.addColorStop(.55, "rgba(0,14,50,.55)");
+      g.addColorStop(1, "rgba(0,14,50,0)");
+      ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+      g = ctx.createLinearGradient(0,H,0,H*0.30);
+      g.addColorStop(0, "rgba(0,8,32,.88)");
+      g.addColorStop(1, "rgba(0,8,32,0)");
+      ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+      g = ctx.createLinearGradient(0,0,0,150);
+      g.addColorStop(0, "rgba(0,8,32,.55)"); g.addColorStop(1, "rgba(0,8,32,0)");
+      ctx.fillStyle = g; ctx.fillRect(0,0,W,150);
+    } else {
+      drawBackground(ctx);
+      ctx.fillStyle = "rgba(255,255,255,.28)";
+      ctx.font = "600 24px 'Plus Jakarta Sans'";
+      ctx.textAlign = "center";
+      ctx.fillText("Busca y elige una imagen en el panel izquierdo →", W/2, 96);
+      ctx.textAlign = "left";
+    }
+    const margin2 = 84;
+    if (S.badgeOn && S.badge) drawBadge(ctx, margin2, 60, S.badge);
+    const fit = fitTitle(ctx, tokens, 780, 330, 92);
+    const st = S.subtitle ? 66 : 0;
+    const yTop = H - 96 - st - titleHeight(fit) - 40;
+    const tb = drawTitleBlock(ctx, fit, margin2, yTop, true);
+    drawUnderline(ctx, margin2, tb.bottom, true);
+    if (S.subtitle){
+      ctx.save();
+      ctx.shadowColor = "rgba(0,6,26,.6)"; ctx.shadowBlur = 18;
+      ctx.font = "500 27px 'Plus Jakarta Sans'";
+      ctx.fillStyle = "#cdd9f4";
+      ctx.fillText(S.subtitle, margin2, tb.bottom + 92);
+      ctx.restore();
+    }
+    drawLogo(ctx);
+    drawVignette(ctx);
+  }
 }
 
+/* ---------- lienzos (preview supersampleado) ---------- */
+const cvMain = $("cvMain");
+cvMain.width = W*SS; cvMain.height = H*SS;
+const thumbs = {};
+document.querySelectorAll("[data-cv]").forEach(cv => {
+  cv.width = W; cv.height = H;
+  thumbs[cv.dataset.cv] = cv;
+});
+let rafId = null;
+function schedule(){ if (!rafId) rafId = requestAnimationFrame(() => { rafId = null; drawAll(); }); }
+function drawAll(){
+  const m = cvMain.getContext("2d");
+  m.save(); m.scale(SS,SS); render(m, S.variant); m.restore();
+  for (const v in thumbs){
+    const c = thumbs[v].getContext("2d");
+    c.save(); render(c, v); c.restore();
+  }
+  const n = { academica:1, presidencial:2, llamativa:3 }[S.variant];
+  $("dimLab").textContent = "1280 × 720 px · opción " + n;
+}
+
+/* selección de opción */
+document.querySelectorAll(".vcard").forEach(el => {
+  el.onclick = () => {
+    document.querySelectorAll(".vcard").forEach(x => x.classList.remove("on"));
+    el.classList.add("on");
+    S.variant = el.dataset.v;
+    save(); schedule();
+  };
+});
+
 /* ============================================================
-   Exportación PNG (con metadatos de autoría — RLR)
+   Búsqueda de imagen relevante (Wikimedia Commons, sin API key,
+   imágenes seguras para canvas por CORS) — RLR
+   ============================================================ */
+const STOP = new Set("la el los las de del en y que un una tu su lo al es no más mas por para con ya se nadie casi solo cada".split(" "));
+let qDirty = false;
+function suggestQuery(){
+  if (qDirty) return;
+  const words = S.title.replace(/\*/g,"").replace(/[.:¿?¡!,]/g,"").split(/\s+/)
+    .filter(w => w && !STOP.has(w.toLowerCase())).slice(0,4);
+  S.q = words.join(" ");
+  $("q").value = S.q;
+}
+async function searchImages(){
+  const q = $("q").value.trim();
+  if (!q) return;
+  S.q = q; save();
+  $("searching").style.display = "block";
+  $("results").innerHTML = "";
+  try {
+    const url = "https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*"
+      + "&generator=search&gsrsearch=" + encodeURIComponent("filetype:bitmap " + q)
+      + "&gsrnamespace=6&gsrlimit=12&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=1600";
+    const res = await fetch(url);
+    const data = await res.json();
+    const pages = Object.values((data.query || {}).pages || {})
+      .filter(p => p.imageinfo && /\.(jpe?g|png)$/i.test(p.imageinfo[0].url))
+      .sort((a,b) => a.index - b.index);
+    $("searching").style.display = "none";
+    if (!pages.length){ toast("Sin resultados — intenta en inglés"); return; }
+    pages.forEach(p => {
+      const info = p.imageinfo[0];
+      const md = info.extmetadata || {};
+      const lic = (md.LicenseShortName || {}).value || "";
+      const div = document.createElement("div");
+      div.className = "r";
+      div.title = (p.title || "").replace("File:","") + (lic ? " · " + lic : "");
+      const im = document.createElement("img");
+      im.loading = "lazy"; im.src = info.thumburl;
+      div.appendChild(im);
+      div.onclick = () => {
+        document.querySelectorAll(".results .r").forEach(x => x.classList.remove("sel"));
+        div.classList.add("sel");
+        S.webUrl = info.thumburl;
+        S.webLic = lic;
+        $("lic").textContent = lic ? "Imagen: Wikimedia Commons · Licencia " + lic : "Imagen: Wikimedia Commons";
+        loadRemote("web", info.thumburl);
+        selectVariant("llamativa");
+        save();
+      };
+      $("results").appendChild(div);
+    });
+  } catch(e){
+    $("searching").style.display = "none";
+    toast("Error de red al buscar");
+  }
+}
+function selectVariant(v){
+  S.variant = v;
+  document.querySelectorAll(".vcard").forEach(x => x.classList.toggle("on", x.dataset.v === v));
+  schedule();
+}
+$("btnSearch").onclick = searchImages;
+$("q").addEventListener("keydown", e => { if (e.key === "Enter") searchImages(); });
+$("q").addEventListener("input", () => { qDirty = true; });
+document.querySelectorAll(".qchip").forEach(b => {
+  b.onclick = () => { $("q").value = b.textContent; qDirty = true; searchImages(); };
+});
+
+/* ============================================================
+   Exportación PNG en alta calidad (render 2× reescalado) con
+   metadatos de autoría — RLR
    ============================================================ */
 const CRC_T = (() => {
   const t = new Uint32Array(256);
@@ -627,9 +774,8 @@ function tEXtChunk(key, val){
   return out;
 }
 async function signPng(blob){
-  /* inserta la autoría de Ricardo Lopez Reyero en el PNG exportado */
   const src = new Uint8Array(await blob.arrayBuffer());
-  const head = src.slice(0, 33); /* firma PNG (8) + IHDR (25) */
+  const head = src.slice(0, 33);
   const rest = src.slice(33);
   const a = tEXtChunk("Author", "Ricardo Lopez Reyero (RLR)");
   const b = tEXtChunk("Comment", "build eye - rev 181218");
@@ -642,15 +788,22 @@ async function signPng(blob){
 function slug(){
   return (S.title || "portada").replace(/\*/g,"")
     .normalize("NFD").replace(/[̀-ͯ]/g,"")
-    .replace(/[^a-zA-Z0-9]+/g,"_").replace(/^_+|_+$/g,"").slice(0,60) || "portada";
+    .replace(/[^a-zA-Z0-9]+/g,"_").replace(/^_+|_+$/g,"").slice(0,52) || "portada";
 }
+/* renderiza al doble y reescala: bordes de letra perfectamente suaves */
 function renderAt(scale){
-  const off = document.createElement("canvas");
-  off.width = W*scale; off.height = H*scale;
-  const ctx = off.getContext("2d");
-  ctx.scale(scale, scale);
-  render(ctx);
-  return off;
+  const hi = document.createElement("canvas");
+  hi.width = W*scale*2; hi.height = H*scale*2;
+  const hctx = hi.getContext("2d");
+  hctx.scale(scale*2, scale*2);
+  render(hctx, S.variant);
+  const out = document.createElement("canvas");
+  out.width = W*scale; out.height = H*scale;
+  const octx = out.getContext("2d");
+  octx.imageSmoothingEnabled = true;
+  octx.imageSmoothingQuality = "high";
+  octx.drawImage(hi, 0, 0, out.width, out.height);
+  return out;
 }
 async function exportPng(scale){
   const off = renderAt(scale);
@@ -658,10 +811,12 @@ async function exportPng(scale){
   const signed = await signPng(blob);
   const a = document.createElement("a");
   a.href = URL.createObjectURL(signed);
-  a.download = slug() + (scale > 1 ? "_2560x1440" : "_1280x720") + ".png";
+  a.download = slug() + "_" + S.variant + (scale > 1 ? "_2560x1440" : "_1280x720") + ".png";
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-  toast(scale > 1 ? "PNG 2× descargado" : "PNG 1280×720 descargado");
+  const mb = signed.size / 1048576;
+  toast((scale > 1 ? "PNG 2× descargado" : "PNG 1280×720 descargado") +
+        (scale === 1 && mb > 2 ? " · pesa " + mb.toFixed(1) + " MB (límite YouTube: 2 MB)" : ""));
 }
 $("btnPng").onclick = () => exportPng(1);
 $("btn2x").onclick  = () => exportPng(2);
@@ -680,102 +835,94 @@ function toast(msg){
   const t = $("toast");
   t.textContent = msg; t.classList.add("show");
   clearTimeout(toastT);
-  toastT = setTimeout(() => t.classList.remove("show"), 2400);
+  toastT = setTimeout(() => t.classList.remove("show"), 3200);
 }
 
-/* ---------- foto ---------- */
+/* ---------- foto personalizada ---------- */
 const drop = $("drop"), file = $("file");
 drop.onclick = () => file.click();
 ["dragover","dragenter"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
 ["dragleave","drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
-drop.addEventListener("drop", e => { const f = e.dataTransfer.files[0]; if (f) loadPhoto(f); });
-file.onchange = () => { if (file.files[0]) loadPhoto(file.files[0]); };
-function loadPhoto(f){
+drop.addEventListener("drop", e => { const f = e.dataTransfer.files[0]; if (f) loadCustom(f); });
+file.onchange = () => { if (file.files[0]) loadCustom(file.files[0]); };
+function loadCustom(f){
   const rd = new FileReader();
   rd.onload = () => {
     const img = new Image();
     img.onload = () => {
-      S.photo = img;
-      drop.classList.add("loaded");
-      drop.innerHTML = "✓ Foto cargada — <b>clic para cambiarla</b>";
-      $("photoCtl").style.display = "block";
-      draw();
+      IMG.custom = img;
+      drop.innerHTML = "✓ Usando foto personalizada.<br><b>Clic para cambiarla</b>";
+      selectVariant("presidencial");
+      schedule();
     };
     img.src = rd.result;
   };
   rd.readAsDataURL(f);
 }
-$("pClear").onclick = () => {
-  S.photo = null; file.value = "";
-  drop.classList.remove("loaded");
-  drop.innerHTML = "Arrastra tu foto aquí o <b>haz clic para elegir</b><br><span style='font-size:10.5px;opacity:.75'>Ideal: PNG con fondo recortado</span>";
-  $("photoCtl").style.display = "none";
-  draw();
+$("pReset").onclick = () => {
+  IMG.custom = null; file.value = "";
+  drop.innerHTML = "Usando tu foto oficial (GitHub).<br><b>Clic aquí para usar otra foto</b>";
+  schedule();
 };
-$("pFlip").onclick = () => { S.pFlip = !S.pFlip; draw(); };
+$("pFlip").onclick = () => { S.pFlip = !S.pFlip; schedule(); };
 
 /* ---------- bindings ---------- */
 function bind(id, key, isCheck){
   const el = $(id);
   el.addEventListener("input", () => {
     S[key] = isCheck ? el.checked : el.value;
-    save(); draw();
+    if (key === "title") suggestQuery();
+    save(); schedule();
   });
 }
-bind("badge","badge"); bind("title","title"); bind("subtitle","subtitle"); bind("stat","stat");
+bind("badge","badge"); bind("title","title"); bind("subtitle","subtitle");
 bind("badgeOn","badgeOn",true); bind("circles","circles",true); bind("dots","dots",true);
 bind("vignette","vignette",true); bind("underline","underline",true); bind("logoOn","logoOn",true);
-bind("pGlow","pGlow",true); bind("pFade","pFade",true);
-$("bg").addEventListener("input", () => { S.bg = $("bg").value; save(); draw(); });
-[["pScale","pScale",100],["pX","pX",1],["pY","pY",1]].forEach(([id,key,div]) => {
+bind("pGlow","pGlow",true);
+$("bg").addEventListener("input", () => { S.bg = $("bg").value; save(); schedule(); });
+[["pScale","pScale"],["pX","pX"],["pY","pY"]].forEach(([id,key]) => {
   $(id).addEventListener("input", () => {
     S[key] = $(id).value / (key === "pScale" ? 100 : 1);
     $("o" + id.slice(1)).textContent = $(id).value;
-    draw();
+    schedule();
   });
-});
-document.querySelectorAll(".lay").forEach(el => {
-  el.onclick = () => {
-    document.querySelectorAll(".lay").forEach(x => x.classList.remove("on"));
-    el.classList.add("on");
-    S.layout = el.dataset.l;
-    $("grpStat").style.display = S.layout === "dato" ? "block" : "none";
-    save(); draw();
-  };
 });
 
 /* ---------- persistencia ---------- */
-const LS = "sl_portadas_v1"; /* RLR */
+const LS = "sl_portadas_v2"; /* RLR */
 function save(){
-  const { photo, ...rest } = S;
-  localStorage.setItem(LS, JSON.stringify(rest));
+  localStorage.setItem(LS, JSON.stringify(S));
 }
 function restore(){
-  try {
-    const d = JSON.parse(localStorage.getItem(LS) || "{}");
-    Object.assign(S, d, { photo:null });
-  } catch(e){}
+  try { Object.assign(S, JSON.parse(localStorage.getItem(LS) || "{}")); } catch(e){}
   $("badge").value = S.badge; $("title").value = S.title;
-  $("subtitle").value = S.subtitle; $("stat").value = S.stat;
+  $("subtitle").value = S.subtitle;
   $("badgeOn").checked = S.badgeOn; $("circles").checked = S.circles;
   $("dots").checked = S.dots; $("vignette").checked = S.vignette;
   $("underline").checked = S.underline; $("logoOn").checked = S.logoOn;
-  $("pGlow").checked = S.pGlow; $("pFade").checked = S.pFade;
+  $("pGlow").checked = S.pGlow;
   $("bg").value = S.bg;
-  document.querySelectorAll(".lay").forEach(x => x.classList.toggle("on", x.dataset.l === S.layout));
-  $("grpStat").style.display = S.layout === "dato" ? "block" : "none";
+  $("pScale").value = S.pScale*100; $("oScale").textContent = Math.round(S.pScale*100);
+  $("pX").value = S.pX; $("oX").textContent = S.pX;
+  $("pY").value = S.pY; $("oY").textContent = S.pY;
+  document.querySelectorAll(".vcard").forEach(x => x.classList.toggle("on", x.dataset.v === S.variant));
+  if (S.q){ $("q").value = S.q; qDirty = true; } else suggestQuery();
+  if (S.webUrl){
+    loadRemote("web", S.webUrl);
+    $("lic").textContent = S.webLic ? "Imagen: Wikimedia Commons · Licencia " + S.webLic : "Imagen: Wikimedia Commons";
+  }
 }
 
-/* ---------- arranque: espera las fuentes y dibuja ---------- */
+/* ---------- arranque ---------- */
 restore();
-draw();
+schedule();
 Promise.all([
   document.fonts.load("800 90px 'Plus Jakarta Sans'"),
   document.fonts.load("italic 800 90px 'Plus Jakarta Sans'"),
   document.fonts.load("700 21px 'Plus Jakarta Sans'"),
   document.fonts.load("500 28px 'Plus Jakarta Sans'")
-]).then(draw);
-document.fonts.ready.then(draw);
+]).then(schedule);
+document.fonts.ready.then(schedule);
 </script>
 <!-- RLR · Ricardo López Reyero · eye/181218 -->
 </body>
