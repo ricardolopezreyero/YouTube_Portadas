@@ -125,6 +125,15 @@ select{appearance:none; cursor:pointer}
 }
 .qchip:hover{color:var(--green); border-color:rgba(86,239,159,.4)}
 .qchip.ai{color:var(--green); border-color:rgba(86,239,159,.28)}
+.qchip.top{color:#ffce6b; border-color:rgba(255,206,107,.45); background:rgba(255,206,107,.08)}
+.aipick{
+  margin-top:10px; padding:10px 12px; border-radius:10px;
+  background:rgba(86,239,159,.06); border:.5px solid rgba(86,239,159,.22);
+  font-size:11.5px; line-height:1.55; color:#dfe8ff;
+}
+.aipick b{color:var(--green)}
+.aipick .ctrbig{font-weight:800; color:#ffce6b}
+.aipick .disc{display:block; margin-top:5px; color:var(--txt-lab); font-size:10px}
 /* toggles */
 .row{display:flex; align-items:center; justify-content:space-between; padding:7px 0}
 .row label{font-size:12.5px; font-weight:600; color:#dfe8ff}
@@ -178,7 +187,20 @@ input[type=range]::-webkit-slider-thumb{
   background:var(--green); color:var(--navy); font-size:11px; font-weight:800;
   border-radius:50%; display:flex; align-items:center; justify-content:center;
 }
-.lic{font-size:10px; color:var(--txt-lab); margin-top:7px; line-height:1.4}
+.results .r.top{border-color:rgba(255,206,107,.55)}
+.results .r.top:before{
+  content:"🏆"; position:absolute; left:4px; top:4px; z-index:2; font-size:11px; line-height:1;
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,.7));
+}
+.results .r .ctr{
+  position:absolute; left:4px; bottom:4px; z-index:2;
+  font-size:9px; font-weight:800; padding:2px 6px; border-radius:20px;
+  letter-spacing:.2px; background:rgba(0,10,38,.72); color:#cfd8ee;
+}
+.results .r .ctr.hi{background:rgba(86,239,159,.9); color:var(--navy)}
+.results .r .ctr.mid{background:rgba(42,137,251,.85); color:#fff}
+.lic{font-size:10px; color:var(--txt-lab); margin-top:7px; line-height:1.5}
+.lic .ctrline{display:block; color:var(--green); font-size:11px; margin-bottom:2px}
 .searching{font-size:11px; color:var(--green); margin-top:8px; display:none}
 /* dropzone */
 .drop{
@@ -263,8 +285,10 @@ hr{border:none; border-top:.5px solid rgba(255,255,255,.06); margin:18px 0}
       <input type="text" id="q" spellcheck="false" placeholder="ej. escuela pública México">
       <button id="btnSearch">Buscar</button>
     </div>
-    <button class="btn-ai" id="btnAI">✨ Sugerir fotos con IA según el título</button>
+    <button class="btn-ai" id="btnAI">✨ Sugerir fotos y estimar CTR con IA</button>
+    <div class="hint">La IA piensa 6 conceptos visuales, les da un <b>ángulo psicológico</b> y estima su <b>CTR</b> (supuesto razonado, no dato medido de YouTube).</div>
     <div class="qchips" id="qchips"></div>
+    <div class="aipick" id="aiPick" style="display:none"></div>
     <div class="searching" id="searching">Buscando imágenes…</div>
     <div class="results" id="results"></div>
     <div class="lic" id="lic"></div>
@@ -341,6 +365,7 @@ const SS = 2;                                  /* supersampleo del preview (niti
 const ASSETS = "https://ricardolopezreyero.github.io/YouTube_Portadas/assets/";
 const WORKER = "https://portadas-imagenes.noisy-shape-4fc9.workers.dev";
 const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
 /* ---------- estado ---------- */
 const S = {
@@ -351,7 +376,8 @@ const S = {
   subtitle:"",
   bg:"grad", circles:true, dots:false, vignette:true, underline:false, logoOn:false,
   pScale:1, pX:0, pY:0, pGlow:true, pFlip:false,
-  webUrl:"", webLic:"", webDark:0.38, q:""
+  webUrl:"", webLic:"", webDark:0.38, q:"",
+  webAngle:"", webReason:"", webCtr:null   /* razonamiento y CTR estimado de la foto elegida — RLR */
 };
 
 /* ---------- assets remotos (GitHub Pages) ---------- */
@@ -714,23 +740,63 @@ function pickImage(item, el){
   if (el) el.classList.add("sel");
   S.webUrl = item.url;
   S.webLic = item.lic;
-  $("lic").textContent = item.lic ? "Imagen: Wikimedia Commons · Licencia " + item.lic : "Imagen: Wikimedia Commons";
+  S.webAngle = item.angle || "";
+  S.webReason = item.reason || "";
+  S.webCtr = typeof item.ctr === "number" ? item.ctr : null;
+  updateLicText();
   loadRemote("web", item.url);
   save();
 }
+/* muestra el CTR estimado y el razonamiento de la foto elegida, visible bajo la galería — RLR */
+function updateLicText(){
+  const el = $("lic");
+  if (S.webCtr != null){
+    el.innerHTML =
+      '<span class="ctrline">🎯 CTR estimado ' + S.webCtr + '/100' + (S.webAngle ? " · " + esc(S.webAngle) : "") + '</span>' +
+      (S.webReason ? esc(S.webReason) + "<br>" : "") +
+      (S.webLic ? "Wikimedia Commons · Licencia " + esc(S.webLic) : "Wikimedia Commons") +
+      '<br><span style="color:var(--txt-lab)">Supuesto razonado por IA, no es analítica real de YouTube.</span>';
+  } else {
+    el.textContent = S.webLic ? "Imagen: Wikimedia Commons · Licencia " + S.webLic : (S.webUrl ? "Imagen: Wikimedia Commons" : "");
+  }
+}
 function renderResults(items, autoPick){
   $("results").innerHTML = "";
-  items.forEach((item, i) => {
+  const els = [];
+  items.forEach((item) => {
     const div = document.createElement("div");
-    div.className = "r";
-    div.title = item.name + (item.lic ? " · " + item.lic : "") + (item.q ? "\nBúsqueda: " + item.q : "");
+    div.className = "r" + (item.isTop ? " top" : "");
+    div.title = item.name + (item.lic ? " · " + item.lic : "") +
+      (item.angle ? "\nÁngulo IA: " + item.angle : "") +
+      (item.reason ? "\n" + item.reason : "") +
+      (item.q ? "\nBúsqueda: " + item.q : "");
     const im = document.createElement("img");
     im.loading = "lazy"; im.src = item.url;
     div.appendChild(im);
+    if (typeof item.ctr === "number"){
+      const b = document.createElement("span");
+      b.className = "ctr " + (item.ctr >= 80 ? "hi" : item.ctr >= 60 ? "mid" : "");
+      b.textContent = "CTR " + item.ctr;
+      div.appendChild(b);
+    }
     div.onclick = () => { pickImage(item, div); selectVariant("llamativa"); };
     $("results").appendChild(div);
-    if (autoPick && i === 0 && !S.webUrl) pickImage(item, div);
+    els.push(div);
   });
+  if (autoPick && !S.webUrl && items.length){
+    const idx = Math.max(0, items.findIndex(it => it.isTop));
+    pickImage(items[idx], els[idx]);
+  }
+}
+/* banner persistente con la recomendación de la IA y su razonamiento — RLR */
+function showAiPick(idea, reason){
+  const el = $("aiPick");
+  if (!idea){ el.style.display = "none"; return; }
+  el.innerHTML =
+    '🏆 <b>La IA recomienda:</b> "' + esc(idea.q) + '" <span class="ctrbig">· CTR ' + idea.ctr + '/100</span><br>' +
+    esc(reason || idea.reason) +
+    '<span class="disc">Estimación razonada por IA a partir de patrones de miniaturas — no es dato medido de YouTube.</span>';
+  el.style.display = "block";
 }
 async function searchImages(autoPick){
   const q = $("q").value.trim();
@@ -747,40 +813,53 @@ async function searchImages(autoPick){
     toast("Error de red al buscar");
   }
 }
-/* Sugerencia con IA: el Worker devuelve 6 búsquedas visuales según el título */
+/* Sugerencia con IA: el Worker piensa 6 conceptos visuales con ángulo psicológico
+   y un CTR estimado (supuesto razonado) por concepto, más su recomendación top — RLR */
 async function aiSuggest(autoPick){
   const btn = $("btnAI");
-  btn.disabled = true; btn.textContent = "✨ Pensando búsquedas visuales…";
+  btn.disabled = true; btn.textContent = "✨ Razonando ángulos y CTR…";
   $("searching").style.display = "block";
+  $("aiPick").style.display = "none";
   try {
-    const r = await fetch(WORKER + "/queries?title=" + encodeURIComponent(S.title.replace(/\*/g,"")));
-    const { queries = [] } = await r.json();
-    if (!queries.length) throw new Error("sin consultas");
-    /* muestra las consultas como chips reutilizables */
+    const r = await fetch(WORKER + "/queries?title=" + encodeURIComponent(S.title.replace(/\*/g,"")), { cache:"no-store" });
+    const { ideas = [], topPick = 0, topPickReason = "" } = await r.json();
+    if (!ideas.length) throw new Error("sin ideas");
+
+    /* chips reutilizables: cada uno lleva su ángulo y CTR en el tooltip */
     $("qchips").innerHTML = "";
-    queries.forEach(q => {
+    ideas.forEach((idea, i) => {
       const b = document.createElement("button");
-      b.className = "qchip ai"; b.textContent = q;
-      b.onclick = () => { $("q").value = q; qDirty = true; searchImages(false); };
+      b.className = "qchip ai" + (i === topPick ? " top" : "");
+      b.textContent = (i === topPick ? "🏆 " : "") + idea.q;
+      b.title = (idea.angle ? idea.angle + " · " : "") + "CTR estimado " + idea.ctr + "/100" + (idea.reason ? "\n" + idea.reason : "");
+      b.onclick = () => { $("q").value = idea.q; qDirty = true; searchImages(false); };
       $("qchips").appendChild(b);
     });
-    /* trae 3 fotos por consulta y arma una galería variada */
-    const lists = await Promise.all(queries.map(q => searchCommons(q, 3).catch(() => [])));
+    if (ideas[topPick]) showAiPick(ideas[topPick], topPickReason);
+
+    /* trae 3 fotos por concepto y adjunta el razonamiento a cada una */
+    const lists = await Promise.all(ideas.map((idea, i) =>
+      searchCommons(idea.q, 3)
+        .then(list => list.map(it => ({ ...it, angle: idea.angle, reason: idea.reason, ctr: idea.ctr, isTop: i === topPick })))
+        .catch(() => [])
+    ));
     const seen = new Set();
     const items = [];
     for (const list of lists)
       for (const it of list)
         if (!seen.has(it.url)){ seen.add(it.url); items.push(it); }
+    /* las fotos del concepto ganador aparecen primero en la galería */
+    items.sort((a,b) => (b.isTop - a.isTop) || (b.ctr - a.ctr));
     $("searching").style.display = "none";
-    if (!items.length){ toast("La IA sugirió búsquedas pero no hubo fotos — prueba manual"); return; }
+    if (!items.length){ toast("La IA sugirió conceptos pero no hubo fotos — prueba manual"); return; }
     renderResults(items.slice(0,12), autoPick);
-    toast(Math.min(items.length,12) + " fotos sugeridas por IA — elige tu favorita");
+    toast(Math.min(items.length,12) + " fotos sugeridas · la de mayor CTR estimado lleva 🏆");
   } catch(e){
     $("searching").style.display = "none";
     toast("IA no disponible — usando búsqueda normal");
     searchImages(autoPick);
   }
-  btn.disabled = false; btn.textContent = "✨ Sugerir fotos con IA según el título";
+  btn.disabled = false; btn.textContent = "✨ Sugerir fotos y estimar CTR con IA";
 }
 $("btnAI").onclick = () => aiSuggest(false);
 $("btnSearch").onclick = () => searchImages(false);
@@ -966,7 +1045,7 @@ function restore(){
   if (S.q){ $("q").value = S.q; qDirty = true; } else suggestQuery();
   if (S.webUrl){
     loadRemote("web", S.webUrl);
-    $("lic").textContent = S.webLic ? "Imagen: Wikimedia Commons · Licencia " + S.webLic : "Imagen: Wikimedia Commons";
+    updateLicText();
   }
 }
 
